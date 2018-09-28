@@ -1,18 +1,18 @@
 [submodule "lib/p"]
 	path = lib/p
-	url = git@github.com:ambiata/p
+	url = git@github.com:HuwCampbell/p
 [submodule "lib/disorder"]
 	path = lib/disorder
-	url = git@github.com:ambiata/disorder.hs
+	url = git@github.com:HuwCampbell/disorder.hs
 [submodule "lib/x"]
 	path = lib/x
-	url = git@github.com:ambiata/x
+	url = git@github.com:HuwCampbell/x
 [submodule "lib/anemone"]
 	path = lib/anemone
-	url = git@github.com:ambiata/anemone
+	url = git@github.com:HuwCampbell/anemone
 [submodule "lib/snapper"]
 	path = lib/snapper
-	url = git@github.com:ambiata/snapper
+	url = git@github.com:HuwCampbell/snapper
 [submodule "lib/viking"]
 	path = lib/viking
-	url = git@github.com:ambiata/viking
+	url = git@github.com:HuwCampbell/viking

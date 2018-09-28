@@ -529,6 +529,5 @@ unionStruct cfields0 cfields1 = do
   ys <- traverse (defaultOrNothing fields) cfields1
 
   pure . Cons.unsafeFromVector $
-    Cons.toVector xs <>
-    Cons.mapMaybe id ys
+    Cons.toVector xs `mappend` Cons.mapMaybe id ys
 {-# INLINABLE unionStruct #-}

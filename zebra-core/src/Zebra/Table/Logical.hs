@@ -255,7 +255,7 @@ merge x0 x1 =
       pure $ Binary (bs0 <> bs1)
 
     (Array xs0, Array xs1) ->
-      pure $ Array (xs0 <> xs1)
+      pure $ Array (xs0 `mappend` xs1)
 
     (Map kvs0, Map kvs1) ->
       Map <$> mergeMap kvs0 kvs1

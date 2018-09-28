@@ -77,11 +77,12 @@ import qualified Data.ByteString as ByteString
 import           Data.ByteString.Internal (ByteString(..))
 import           Data.Map (Map)
 import qualified Data.Map.Strict as Map
+import           Data.Monoid ((<>))
 import qualified Data.Text as Text
 
 import           GHC.Generics (Generic)
 
-import           P hiding (empty, concat, splitAt, length)
+import           P hiding (empty, concat, splitAt, length, (<>))
 
 import           Text.Show.Pretty (ppShow)
 

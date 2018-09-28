@@ -71,11 +71,14 @@ data FileSummary =
     , fileLastKey :: !(Maybe Logical.Value)
     }
 
+instance Semigroup FileSummary where
+  (<>) (FileSummary b0 r0 m0 s0 f0 l0) (FileSummary b1 r1 m1 s1 f1 l1) =
+    FileSummary (b0 + b1) (r0 + r1) (max m0 m1) (s0 <|> s1) (f0 <|> f1) (l1 <|> l0)
+
 instance Monoid FileSummary where
   mempty =
     FileSummary 0 0 0 Nothing Nothing Nothing
-  mappend (FileSummary b0 r0 m0 s0 f0 l0) (FileSummary b1 r1 m1 s1 f1 l1) =
-    FileSummary (b0 + b1) (r0 + r1) (max m0 m1) (s0 <|> s1) (f0 <|> f1) (l1 <|> l0)
+  mappend = (<>)
 
 fromTable :: Striped.Table -> FileSummary
 fromTable table =
@@ -145,7 +148,7 @@ renderFileSummary (FileSummary nblocks nrows nmaxrows mschema mfirst mlast) =
 -- @
 -- Stream.store (zebraDisplay region)
 -- @
-zebraDisplay :: forall m r. (MonadResource m) => Concurrent.ConsoleRegion -> Stream.Stream (Of Striped.Table) m r -> m r
+zebraDisplay :: forall m r. MonadIO m => Concurrent.ConsoleRegion -> Stream.Stream (Of Striped.Table) m r -> m r
 zebraDisplay region tables = do
   let
     loop summary0 table = do
@@ -162,7 +165,7 @@ zebraDisplay region tables = do
   liftIO $ Concurrent.finishConsoleRegion region (renderFileSummary summary)
   return r
 
-zebraSummary :: forall m. (MonadResource m, MonadMask m) => Summary -> EitherT SummaryError m ()
+zebraSummary :: forall m. (MonadMask m, MonadResource m) => Summary -> EitherT SummaryError m ()
 zebraSummary export =
   EitherT . Concurrent.displayConsoleRegions . runEitherT $ do
     region <- liftIO $ Concurrent.openConsoleRegion Concurrent.Linear
