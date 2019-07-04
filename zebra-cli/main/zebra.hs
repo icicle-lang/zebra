@@ -2,8 +2,8 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-import           BuildInfo_ambiata_zebra_cli
-import           DependencyInfo_ambiata_zebra_cli
+import           Paths_ambiata_zebra_cli (version)
+import           Data.Version (showVersion)
 
 import           Control.Monad.Morph (hoist)
 import           Control.Monad.Trans.Resource (runResourceT)
@@ -38,7 +38,7 @@ main = do
   setNumCapabilities (min 8 n)
   IO.hSetBuffering IO.stdout IO.LineBuffering
   IO.hSetBuffering IO.stderr IO.LineBuffering
-  Options.cli "zebra" buildInfoVersion dependencyInfo parser run
+  Options.cli "zebra" (showVersion version) [] parser run
 
 data Command =
     ZebraSummary !Summary

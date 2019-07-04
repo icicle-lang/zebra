@@ -7,7 +7,7 @@ copyright:             (c) 2015 Ambiata.
 synopsis:              zebra
 category:              System
 cabal-version:         >= 1.8
-build-type:            Custom
+build-type:            Simple
 description:           zebra
 
 library
@@ -48,6 +48,7 @@ library
                     Zebra.Command.Summary
                     Zebra.Command.Util
 
+
 executable zebra
   if impl(ghc >= 8.0)
     ghc-options:
@@ -57,18 +58,10 @@ executable zebra
                     -Wall -threaded -O2 -rtsopts "-with-rtsopts=-A128m -n4m -qg"
 
   hs-source-dirs:
-                    gen
-
-  other-modules:
-                    BuildInfo_ambiata_zebra_cli
-                    DependencyInfo_ambiata_zebra_cli
-
-  autogen-modules:
-                    BuildInfo_ambiata_zebra_cli
-                    DependencyInfo_ambiata_zebra_cli
+                    main
 
   main-is:
-                    ../main/zebra.hs
+                    zebra.hs
 
   build-depends:
                       base
@@ -89,6 +82,9 @@ executable zebra
                     , semigroups
                     , text
                     , transformers
+
+  other-modules:
+                    Paths_ambiata_zebra_cli
 
 test-suite test
   type:
