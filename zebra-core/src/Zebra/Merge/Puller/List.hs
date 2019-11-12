@@ -8,6 +8,7 @@ module Zebra.Merge.Puller.List (
   ) where
 
 import           Control.Monad.IO.Class (MonadIO(..))
+import           Control.Monad.Trans.Either (EitherT)
 
 import qualified Data.IORef as Ref
 
@@ -15,13 +16,13 @@ import           P
 
 import           System.IO (IO)
 
-import           X.Control.Monad.Trans.Either (EitherT, joinEitherT)
 import qualified X.Data.Vector as Boxed
 
 import           Zebra.Factset.Block
 import           Zebra.Factset.Entity
 import           Zebra.Foreign.Entity
 import           Zebra.Merge.BlockC
+import           Zebra.X.Either
 
 
 mergeLists :: Int64 -> [[Block]] -> EitherT MergeError IO [Entity]
@@ -43,7 +44,7 @@ mergeLists gcEvery blocks0 = do
 
   let ixes = Boxed.enumFromN (0 :: Int) (length blocks0)
 
-  joinEitherT MergeForeign $ mergeBlocks opts ixes
+  secondJoin MergeForeign $ mergeBlocks opts ixes
   reverse <$> liftIO (Ref.readIORef entityRef)
 
  where

@@ -19,6 +19,7 @@ module Zebra.Foreign.Block (
 import           Anemone.Foreign.Mempool (Mempool, alloc, calloc)
 
 import           Control.Monad.IO.Class (MonadIO(..))
+import           Control.Monad.Trans.Either (EitherT)
 
 import qualified Data.ByteString as B
 import qualified Data.Vector as Boxed
@@ -32,7 +33,6 @@ import           P
 
 import qualified Prelude as Savage
 
-import           X.Control.Monad.Trans.Either (EitherT)
 
 import           Zebra.Factset.Block
 import           Zebra.Factset.Data

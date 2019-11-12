@@ -1,0 +1,19 @@
+packages:
+          zebra-cli/
+          zebra-core/
+          zebra-core/test/
+          lib/anemone/
+          lib/disorder/disorder-core
+          lib/disorder/disorder-corpus
+          lib/disorder/disorder-jack
+          lib/viking/
+          lib/snapper/
+          lib/x/x-show/
+          lib/x/x-bytestring/
+          lib/x/x-optparse/
+          lib/x/x-vector/
+          lib/p/
+
+constraints:
+  cabal > 2
+

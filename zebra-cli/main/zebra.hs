@@ -2,11 +2,9 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-import           Paths_ambiata_zebra_cli (version)
-import           Data.Version (showVersion)
-
 import           Control.Monad.Morph (hoist)
 import           Control.Monad.Trans.Resource (runResourceT)
+import           Control.Monad.Trans.Either.Exit (orDie)
 
 import           Data.List.NonEmpty (NonEmpty(..), some1)
 import           Data.String (String)
@@ -18,7 +16,6 @@ import           P
 import           System.IO (IO, FilePath)
 import qualified System.IO as IO
 
-import           X.Control.Monad.Trans.Either.Exit (orDie)
 import           X.Options.Applicative (Parser, Mod, CommandFields)
 import qualified X.Options.Applicative as Options
 
@@ -38,7 +35,7 @@ main = do
   setNumCapabilities (min 8 n)
   IO.hSetBuffering IO.stdout IO.LineBuffering
   IO.hSetBuffering IO.stderr IO.LineBuffering
-  Options.cli "zebra" (showVersion version) [] parser run
+  Options.cli "zebra" "1.0.0" [] parser run
 
 data Command =
     ZebraSummary !Summary

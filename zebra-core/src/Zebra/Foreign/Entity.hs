@@ -18,6 +18,7 @@ module Zebra.Foreign.Entity (
 import           Anemone.Foreign.Mempool (Mempool, alloc, calloc)
 
 import           Control.Monad.IO.Class (MonadIO(..))
+import           Control.Monad.Trans.Either (EitherT)
 
 import qualified Data.ByteString as B
 import qualified Data.Vector as Boxed
@@ -27,7 +28,6 @@ import           Foreign.Storable (Storable(..))
 
 import           P
 
-import           X.Control.Monad.Trans.Either (EitherT)
 
 import           Zebra.Factset.Data
 import           Zebra.Factset.Entity

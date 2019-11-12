@@ -30,6 +30,7 @@ module Zebra.Serial.Binary.File (
 import           Control.Monad.Catch (catchIOError)
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Control.Monad.Trans.Class (lift)
+import           Control.Monad.Trans.Either (EitherT, pattern EitherT, runEitherT, left)
 import           Control.Monad.Trans.Resource (MonadResource(..), ReleaseKey)
 import qualified Control.Monad.Trans.Resource as Resource
 
@@ -46,7 +47,6 @@ import           System.IO (IO, IOMode(..), FilePath, Handle)
 import qualified System.IO as IO
 import           System.IO.Error (IOError)
 
-import           X.Control.Monad.Trans.Either (EitherT, pattern EitherT, runEitherT, left)
 import           X.Data.Vector.Stream (Stream(..), Step, SPEC(..))
 import qualified X.Data.Vector.Stream as Stream
 

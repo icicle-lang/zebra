@@ -15,6 +15,7 @@ import           Anemone.Foreign.Mempool (Mempool)
 import qualified Anemone.Foreign.Mempool as Mempool
 
 import           Control.Monad.IO.Class (MonadIO(..))
+import           Control.Monad.Trans.Either (EitherT)
 
 import           Data.Coerce (coerce)
 import qualified Data.Vector.Storable as Storable
@@ -24,8 +25,6 @@ import           Foreign.Storable (Storable(..))
 import           Foreign.ForeignPtr (ForeignPtr, withForeignPtr)
 
 import           P
-
-import           X.Control.Monad.Trans.Either (EitherT)
 
 import           Zebra.Foreign.Bindings
 import           Zebra.Foreign.Entity

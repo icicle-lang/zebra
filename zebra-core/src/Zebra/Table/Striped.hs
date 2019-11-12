@@ -71,6 +71,7 @@ module Zebra.Table.Striped (
   ) where
 
 import           Control.Monad.Trans.Class (lift)
+import           Control.Monad.Trans.Either (EitherT, hoistEither)
 
 import           Data.Biapplicative (biliftA2)
 import qualified Data.ByteString as ByteString
@@ -89,7 +90,6 @@ import           Text.Show.Pretty (ppShow)
 import           Viking (Stream, Of)
 import qualified Viking.Stream as Stream
 
-import           X.Control.Monad.Trans.Either (EitherT, hoistEither)
 import qualified X.Data.Vector as Boxed
 import           X.Data.Vector.Cons (Cons)
 import qualified X.Data.Vector.Cons as Cons

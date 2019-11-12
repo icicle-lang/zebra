@@ -30,7 +30,7 @@ import           P
 
 import           System.IO (IO)
 
-import           X.Control.Monad.Trans.Either (EitherT, runEitherT)
+import           Control.Monad.Trans.Either (EitherT, runEitherT)
 
 
 data TrippingError x y =

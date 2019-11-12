@@ -19,12 +19,12 @@ import           Anemone.Foreign.Mempool (Mempool)
 
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Control.Monad.Trans.Class (lift)
+import           Control.Monad.Trans.Either (EitherT, left)
 
 import qualified Data.Map.Strict as Map
 
 import           P
 
-import           X.Control.Monad.Trans.Either (EitherT, left)
 import qualified X.Data.Vector as Boxed
 
 import           Zebra.Factset.Block

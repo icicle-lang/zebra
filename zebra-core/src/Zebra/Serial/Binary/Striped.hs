@@ -13,6 +13,7 @@ module Zebra.Serial.Binary.Striped (
   , renderBinaryStripedDecodeError
   ) where
 
+import           Control.Monad.Trans.Either (EitherT, left, hoistEither)
 import           Control.Monad.Morph (hoist)
 import           Control.Monad.Trans.Class (lift)
 
@@ -24,7 +25,6 @@ import qualified Viking.Stream as Stream
 import           Viking.Stream.Binary (BinaryError, renderBinaryError)
 import qualified Viking.Stream.Binary as Stream
 
-import           X.Control.Monad.Trans.Either (EitherT, left, hoistEither)
 
 import           Zebra.Factset.Table
 import           Zebra.Serial.Binary.Block

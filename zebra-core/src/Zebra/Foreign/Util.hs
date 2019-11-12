@@ -25,6 +25,7 @@ import           Anemone.Foreign.Data (CError)
 import           Anemone.Foreign.Mempool (Mempool, allocBytes)
 
 import           Control.Monad.IO.Class (MonadIO(..))
+import           Control.Monad.Trans.Either (EitherT, pattern EitherT, runEitherT, hoistEither)
 
 import           Data.ByteString.Internal (ByteString(..))
 import qualified Data.ByteString.Internal as B
@@ -44,7 +45,6 @@ import qualified Prelude as Savage
 
 import           System.IO (IO)
 
-import           X.Control.Monad.Trans.Either (EitherT, pattern EitherT, runEitherT, hoistEither)
 
 import           Zebra.Foreign.Bindings
 import           Zebra.X.Vector.Segment (SegmentError)

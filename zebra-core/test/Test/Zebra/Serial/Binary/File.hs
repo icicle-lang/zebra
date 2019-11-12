@@ -20,7 +20,7 @@ import           System.IO (IO)
 import           Test.QuickCheck.Instances ()
 import           Test.Zebra.Util
 
-import           X.Control.Monad.Trans.Either
+import           Control.Monad.Trans.Either
 import qualified X.Data.Vector as Boxed
 import qualified X.Data.Vector.Stream as Stream
 

@@ -28,7 +28,7 @@ import           Test.Zebra.Util
 
 import           Text.Show.Pretty (ppShow)
 
-import           X.Control.Monad.Trans.Either (EitherT, pattern EitherT, runEitherT, hoistEither)
+import           Control.Monad.Trans.Either (EitherT, pattern EitherT, runEitherT, hoistEither)
 
 import           Zebra.Factset.Block
 import           Zebra.Factset.Entity

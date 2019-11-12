@@ -12,6 +12,7 @@ module Zebra.Command (
 import qualified Anemone.Foreign.Mempool as Mempool
 
 import           Control.Monad.IO.Class (MonadIO(..))
+import           Control.Monad.Trans.Either (EitherT, hoistEither)
 import           Control.Monad.Trans.Resource (MonadResource)
 import qualified Control.Monad.Trans.Resource as Resource
 
@@ -33,7 +34,6 @@ import qualified System.IO as IO
 
 import           Text.Show.Pretty (ppShow)
 
-import           X.Control.Monad.Trans.Either (EitherT, hoistEither, firstJoin)
 import qualified X.Data.Vector as Boxed
 import qualified X.Data.Vector.Storable as Storable
 import qualified X.Data.Vector.Stream as VStream
@@ -54,7 +54,7 @@ import qualified Zebra.Serial.Binary.Data as Binary
 import qualified Zebra.Serial.Binary.File as Binary
 import qualified Zebra.Serial.Binary.Header as Binary
 import qualified Zebra.Table.Schema as Schema
-
+import           Zebra.X.Either
 
 data CatOptions =
   CatOptions {

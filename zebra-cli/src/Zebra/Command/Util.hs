@@ -8,6 +8,7 @@ module Zebra.Command.Util (
 import           Control.Monad.Catch (MonadCatch)
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Control.Monad.Trans.Resource (MonadResource)
+import           Control.Monad.Trans.Either (EitherT)
 
 import qualified Data.Char as Char
 
@@ -20,7 +21,6 @@ import           System.IO.Error (IOError)
 import           Viking (ByteStream)
 import qualified Viking.ByteStream as ByteStream
 
-import           X.Control.Monad.Trans.Either (EitherT)
 
 
 getBinaryStdout :: MonadIO m => m (Maybe Handle)

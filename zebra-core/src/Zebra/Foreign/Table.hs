@@ -20,6 +20,7 @@ module Zebra.Foreign.Table (
 import           Anemone.Foreign.Mempool (Mempool, alloc, calloc)
 
 import           Control.Monad.IO.Class (MonadIO(..))
+import           Control.Monad.Trans.Either (EitherT, left, hoistEither, hoistMaybe)
 
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as ByteString
@@ -32,7 +33,6 @@ import           Foreign.Ptr (Ptr)
 
 import           P
 
-import           X.Control.Monad.Trans.Either (EitherT, left, hoistEither, hoistMaybe)
 import           X.Data.Vector.Cons (Cons)
 import qualified X.Data.Vector.Cons as Cons
 

@@ -23,6 +23,7 @@ import           Control.Monad.Primitive (PrimMonad(..))
 import           Control.Monad.ST (runST)
 import           Control.Monad.State.Strict (MonadState(..))
 import           Control.Monad.Trans.State.Strict (State, runState)
+import           Control.Monad.Trans.Either (EitherT, runEitherT, left, hoistEither)
 
 import qualified Data.Vector.Mutable as MBoxed
 
@@ -30,7 +31,6 @@ import           GHC.Generics (Generic)
 
 import           P
 
-import           X.Control.Monad.Trans.Either (EitherT, runEitherT, left, hoistEither)
 import qualified X.Data.Vector as Boxed
 import           X.Data.Vector.Ref (Ref, newRef, readRef, writeRef)
 import qualified X.Data.Vector.Storable as Storable

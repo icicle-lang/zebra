@@ -27,7 +27,7 @@ import           Text.Show.Pretty (ppShow)
 
 import           Test.Zebra.Jack
 
-import           X.Control.Monad.Trans.Either (runEitherT, firstEitherT)
+import           Control.Monad.Trans.Either (runEitherT, firstEitherT)
 
 import           Zebra.Foreign.Merge
 import           Zebra.Foreign.Entity

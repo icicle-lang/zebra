@@ -24,6 +24,7 @@ module Zebra.Serial.Text.Logical (
 
 import           Control.Monad.Morph (hoist)
 import           Control.Monad.Trans.Class (lift)
+import           Control.Monad.Trans.Either (EitherT, hoistEither)
 
 import qualified Data.Aeson as Aeson
 import qualified Data.Aeson.Types as Aeson
@@ -39,8 +40,6 @@ import           Viking (ByteStream, Stream, Of(..))
 import qualified Viking.ByteStream as ByteStream
 import qualified Viking.Char8Stream as Char8Stream
 import qualified Viking.Stream as Stream
-
-import           X.Control.Monad.Trans.Either (EitherT, hoistEither)
 
 import           Zebra.Serial.Json.Logical (JsonLogicalEncodeError, renderJsonLogicalEncodeError)
 import           Zebra.Serial.Json.Logical (ppValue, ppPair, pValue, pPair)

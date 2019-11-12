@@ -16,6 +16,7 @@ import           Control.Monad.Catch (MonadCatch(..))
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Control.Monad.Morph (hoist)
 import           Control.Monad.Trans.Resource (MonadResource, ResourceT)
+import           Control.Monad.Trans.Either (EitherT)
 
 import qualified Data.ByteString as ByteString
 import           Data.List.NonEmpty (NonEmpty)
@@ -29,13 +30,13 @@ import           System.IO.Error (IOError)
 import           Viking (ByteStream)
 import qualified Viking.ByteStream as ByteStream
 
-import           X.Control.Monad.Trans.Either (EitherT, tryEitherT, firstJoin)
 
 import           Zebra.Serial.Binary (BinaryLogicalDecodeError)
 import qualified Zebra.Serial.Binary as Binary
 import           Zebra.Serial.Text (TextLogicalEncodeError)
 import qualified Zebra.Serial.Text as Text
 import qualified Zebra.Table.Schema as Schema
+import           Zebra.X.Either
 
 
 data Export =

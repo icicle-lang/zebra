@@ -14,6 +14,7 @@ module Zebra.Serial.Binary.Logical (
   , renderBinaryLogicalDecodeError
   ) where
 
+import           Control.Monad.Trans.Either (EitherT, left, hoistEither)
 import           Control.Monad.Morph (hoist)
 import           Control.Monad.Trans.Class (lift)
 
@@ -22,7 +23,6 @@ import           P
 import           Viking (ByteStream, Stream, Of(..))
 import qualified Viking.Stream as Stream
 
-import           X.Control.Monad.Trans.Either (EitherT, left, hoistEither, firstJoin)
 
 import           Zebra.Serial.Binary.Data
 import           Zebra.Serial.Binary.Striped
@@ -30,6 +30,7 @@ import qualified Zebra.Table.Logical as Logical
 import qualified Zebra.Table.Schema as Schema
 import           Zebra.Table.Striped (StripedError)
 import qualified Zebra.Table.Striped as Striped
+import           Zebra.X.Either
 
 
 data BinaryLogicalEncodeError =

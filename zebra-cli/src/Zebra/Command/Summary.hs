@@ -19,6 +19,7 @@ import           Control.Monad.Catch (MonadMask(..))
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Control.Monad.Morph (hoist)
 import           Control.Monad.Trans.Resource (MonadResource, ResourceT)
+import           Control.Monad.Trans.Either (EitherT, pattern EitherT, runEitherT)
 
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text
@@ -34,7 +35,6 @@ import           Viking (Of(..))
 import qualified Viking.ByteStream as ByteStream
 import qualified Viking.Stream as Stream
 
-import           X.Control.Monad.Trans.Either (EitherT, pattern EitherT, runEitherT, firstJoin)
 
 import           Zebra.Serial.Binary (BinaryStripedDecodeError)
 import qualified Zebra.Serial.Binary as Binary
@@ -42,7 +42,7 @@ import qualified Zebra.Serial.Json as Json
 import qualified Zebra.Table.Logical as Logical
 import qualified Zebra.Table.Schema as Schema
 import qualified Zebra.Table.Striped as Striped
-
+import           Zebra.X.Either
 
 data Summary =
   Summary {

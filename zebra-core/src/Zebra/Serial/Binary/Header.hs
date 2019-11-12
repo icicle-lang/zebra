@@ -160,9 +160,9 @@ getVersion = do
   bs <- Get.getByteString $ ByteString.length MagicV2
   case bs of
     MagicV0 ->
-      fail $ "This version of zebra cannot read v0 zebra files."
+      fail "This version of zebra cannot read v0 zebra files."
     MagicV1 ->
-      fail $ "This version of zebra cannot read v1 zebra files."
+      fail "This version of zebra cannot read v1 zebra files."
     MagicV2 ->
       pure BinaryV2
     MagicV3 ->

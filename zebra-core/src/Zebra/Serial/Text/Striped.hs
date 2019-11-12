@@ -15,6 +15,7 @@ module Zebra.Serial.Text.Striped (
   , renderTextStripedDecodeError
   ) where
 
+import           Control.Monad.Trans.Either (EitherT, hoistEither)
 import           Control.Monad.Morph (hoist)
 import           Control.Monad.Trans.Class (lift)
 
@@ -25,12 +26,11 @@ import           P
 import           Viking (ByteStream, Stream, Of(..))
 import qualified Viking.Stream as Stream
 
-import           X.Control.Monad.Trans.Either (EitherT, hoistEither, firstJoin)
-
 import           Zebra.Serial.Text.Logical
 import qualified Zebra.Table.Schema as Schema
 import           Zebra.Table.Striped (StripedError)
 import qualified Zebra.Table.Striped as Striped
+import           Zebra.X.Either
 
 
 data TextStripedEncodeError =

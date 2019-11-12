@@ -108,7 +108,7 @@ import           Text.Show.Pretty (ppShow)
 import           Viking (Stream, Of)
 import qualified Viking.Stream as Stream
 
-import           X.Control.Monad.Trans.Either (EitherT, runEitherT)
+import           Control.Monad.Trans.Either (EitherT, runEitherT)
 import           X.Data.Vector.Cons (Cons)
 import qualified X.Data.Vector.Cons as Cons
 

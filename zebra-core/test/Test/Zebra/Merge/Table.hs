@@ -8,7 +8,7 @@ import           Data.String (String)
 import qualified Data.Vector as Boxed
 import qualified Data.Map as Map
 
-import           Disorder.Jack (Property, Jack, quickCheckAll, property)
+import           Disorder.Jack (Property, Jack, quickCheckAll, property, discard)
 import           Disorder.Jack ((===), (==>), gamble, counterexample, oneOf, listOfN, sized, chooseInt, choose)
 
 import           P
@@ -22,7 +22,7 @@ import           Text.Show.Pretty (ppShow)
 import           Viking.Stream (Of(..))
 import qualified Viking.Stream as Stream
 
-import           X.Control.Monad.Trans.Either (runEitherT)
+import           Control.Monad.Trans.Either (runEitherT)
 import           X.Data.Vector.Cons (Cons)
 import qualified X.Data.Vector.Cons as Cons
 
@@ -37,8 +37,8 @@ jFileTable :: Schema.Table -> Jack Striped.Table
 jFileTable schema = do
   sized $ \size -> do
     n <- chooseInt (0, 20 * (size `div` 5))
-    Right x <- Striped.fromLogical schema <$> jLogical schema n
-    pure x
+    x <- Striped.fromLogical schema <$> jLogical schema n
+    either (const discard) pure x
 
 jSplits :: Striped.Table -> Jack (NonEmpty Striped.Table)
 jSplits x =

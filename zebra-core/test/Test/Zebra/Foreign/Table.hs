@@ -19,7 +19,7 @@ import           System.IO (IO)
 import           Test.Zebra.Jack
 import           Test.Zebra.Util
 
-import           X.Control.Monad.Trans.Either (EitherT)
+import           Control.Monad.Trans.Either (EitherT)
 
 import           Zebra.Foreign.Table
 import           Zebra.Table.Striped (Table)

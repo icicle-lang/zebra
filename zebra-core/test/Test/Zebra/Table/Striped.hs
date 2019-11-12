@@ -20,7 +20,7 @@ import           Text.Show.Pretty (ppShow)
 
 import qualified Viking.Stream as Stream
 
-import           X.Control.Monad.Trans.Either (runEitherT)
+import           Control.Monad.Trans.Either (runEitherT)
 import qualified X.Data.Vector as Boxed
 import qualified X.Data.Vector.Cons as Cons
 
@@ -97,6 +97,28 @@ prop_rechunk =
           Stream.each xss
     in
       original === rechunked
+
+
+prop_rechunk_lazy :: Property
+prop_rechunk_lazy =
+  gamble (choose (1, 100)) $ \n ->
+  gamble (choose (n, 2 * n)) $ \m ->
+  gamble (Cons.fromNonEmpty <$> listOf1 (jStriped m)) $ \xss ->
+    let
+      original =
+        Striped.unsafeConcat xss
+
+      rechunked =
+        bind (Striped.unsafeConcat . Cons.unsafeFromList) $
+          runIdentity .
+          runEitherT .
+          Stream.toList_ .
+          Stream.take 1 .
+          Striped.rechunk n $
+          Stream.each xss
+    in
+      True
+
 
 prop_default_table_check :: Property
 prop_default_table_check =

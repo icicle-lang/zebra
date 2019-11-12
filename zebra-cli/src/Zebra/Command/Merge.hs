@@ -19,6 +19,7 @@ import           Control.Monad.Catch (MonadCatch)
 import           Control.Monad.IO.Class (liftIO)
 import           Control.Monad.Morph (hoist)
 import           Control.Monad.Trans.Resource (MonadResource, ResourceT)
+import           Control.Monad.Trans.Either (EitherT, hoistEither)
 
 import qualified Data.ByteString as ByteString
 import           Data.List.NonEmpty (NonEmpty)
@@ -32,7 +33,6 @@ import           System.IO.Error (IOError)
 import           Viking (Stream, Of)
 import qualified Viking.ByteStream as ByteStream
 
-import           X.Control.Monad.Trans.Either (EitherT, firstJoin, hoistEither)
 import qualified X.Data.Vector.Cons as Cons
 
 import           Zebra.Command.Util
@@ -46,7 +46,7 @@ import qualified Zebra.Serial.Text as Text
 import qualified Zebra.Table.Schema as Schema
 import           Zebra.Table.Striped (StripedError)
 import qualified Zebra.Table.Striped as Striped
-
+import           Zebra.X.Either
 
 data Merge =
   Merge {

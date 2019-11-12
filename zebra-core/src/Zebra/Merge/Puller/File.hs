@@ -16,6 +16,7 @@ module Zebra.Merge.Puller.File
   ) where
 
 import           Control.Monad.IO.Class (MonadIO(..))
+import           Control.Monad.Trans.Either (EitherT, left)
 import           Control.Monad.Trans.Class (lift)
 import           Control.Monad.Trans.Resource (MonadResource(..))
 
@@ -25,7 +26,6 @@ import           P
 
 import           System.IO (FilePath)
 
-import           X.Control.Monad.Trans.Either (EitherT, left)
 import qualified X.Data.Vector as Boxed
 import qualified X.Data.Vector.Stream as Stream
 

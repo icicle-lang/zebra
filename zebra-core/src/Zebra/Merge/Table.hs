@@ -18,6 +18,7 @@ module Zebra.Merge.Table (
 import           Control.Monad.Morph (hoist, squash)
 import           Control.Monad.Trans.Class (lift)
 import           Control.Monad.Trans.State.Strict (StateT, runStateT, modify')
+import           Control.Monad.Trans.Either (EitherT, hoistEither, left)
 
 import           Data.Map (Map)
 import qualified Data.Map.Strict as Map
@@ -28,7 +29,6 @@ import           P
 import           Viking (Stream, Of)
 import qualified Viking.Stream as Stream
 
-import           X.Control.Monad.Trans.Either (EitherT, hoistEither, left)
 import           X.Data.Vector.Cons (Cons)
 import qualified X.Data.Vector.Cons as Cons
 
