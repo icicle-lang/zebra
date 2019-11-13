@@ -1,6 +1,7 @@
 name:                  ambiata-zebra-core
 version:               0.0.1
 license:               BSD3
+license-file:          LICENSE
 author:                Ambiata <info@ambiata.com>
 maintainer:            Ambiata <info@ambiata.com>
 copyright:             (c) 2015 Ambiata.
@@ -8,7 +9,7 @@ synopsis:              zebra
 category:              System
 cabal-version:         >= 1.8
 build-type:            Simple
-description:           zebra
+description:           Zebra Library
 
 library
   build-depends:
@@ -152,7 +153,7 @@ library
                        csrc/zebra_unpack.c
 
   cc-options:
-                       -std=c99 -O3 -ggdb -msse4.2 -Wall -Werror -Wuninitialized -Wno-unused-command-line-argument -DCABAL=1
+                       -std=c99 -ggdb -msse4.2 -Wall -Werror -Wuninitialized -Wno-unused-command-line-argument -DCABAL=1
 
 test-suite test
   type:
@@ -162,7 +163,7 @@ test-suite test
                     test.hs
 
   ghc-options:
-                    -Wall -threaded -O2
+                    -Wall -threaded
 
   hs-source-dirs:
                     test
