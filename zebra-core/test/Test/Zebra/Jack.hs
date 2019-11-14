@@ -68,11 +68,13 @@ module Test.Zebra.Jack (
   , normalizeLogical
   , normalizeLogicalValue
 
-  -- * x-disorder-jack
-  , trippingBoth
+  -- * x-disorder-Gen
   , withList
-  , testEither
+  , trippingBoth
   , discardLeft
+  , gamble
+  , vectorOf
+  , listOf
   ) where
 
 import           Data.ByteString (ByteString)
@@ -89,17 +91,16 @@ import qualified Data.Vector as Boxed
 import qualified Data.Vector.Storable as Storable
 import qualified Data.Vector.Unboxed as Unboxed
 
-import           Disorder.Corpus (muppets, southpark, boats, weather)
-import           Disorder.Jack (Jack, Property, mkJack, reshrink, shrinkTowards, sized, scale)
-import           Disorder.Jack (elements, arbitrary, choose, chooseInt, sizedBounded)
-import           Disorder.Jack (oneOf, oneOfRec, listOf, listOfN, vectorOf, justOf, maybeOf, sublistOf)
-import           Disorder.Jack ((===), boundedEnum, property, counterexample, shuffle, discard, suchThat)
+import           Hedgehog
+import           Hedgehog.Corpus (muppets, southpark, boats, weather)
+import qualified Hedgehog.Gen as Gen
+import qualified Hedgehog.Gen.QuickCheck as Gen
+import qualified Hedgehog.Range as Range
 
 import           P
 
 import qualified Prelude as Savage
 
-import qualified Test.QuickCheck as QC
 import           Test.QuickCheck.Instances ()
 
 import           Text.Printf (printf)
@@ -126,35 +127,35 @@ import           Zebra.Time
 
 ------------------------------------------------------------------------
 
-jDate :: Jack Date
+jDate :: Gen Date
 jDate =
-  justOf (rightToMaybe . fromDays <$> choose (toDays minBound, toDays maxBound))
+  Gen.just (rightToMaybe . fromDays <$> Gen.integral (Range.linear (toDays minBound) (toDays maxBound)))
 
-jTime :: Jack Time
+jTime :: Gen Time
 jTime =
-  justOf (rightToMaybe . fromMicroseconds <$> choose (toMicroseconds minBound, toMicroseconds maxBound))
+  Gen.just (rightToMaybe . fromMicroseconds <$> Gen.integral (Range.linear  (toMicroseconds minBound) (toMicroseconds maxBound)))
 
-jTimeOfDay :: Jack TimeOfDay
+jTimeOfDay :: Gen TimeOfDay
 jTimeOfDay =
-  toTimeOfDay <$> choose (0, 24 * 60 * 60 * 1000000)
+  toTimeOfDay <$> Gen.integral (Range.linear 0 (24 * 60 * 60 * 1000000))
 
 ------------------------------------------------------------------------
 
-jField :: Jack a -> Jack (Field a)
+jField :: Gen a -> Gen (Field a)
 jField gen =
   Field <$> jFieldName <*> gen
 
-jFieldName :: Jack FieldName
+jFieldName :: Gen FieldName
 jFieldName =
-  FieldName <$> elements boats
+  FieldName <$> Gen.element boats
 
-jVariant :: Jack a -> Jack (Variant a)
+jVariant :: Gen a -> Gen (Variant a)
 jVariant gen =
   Variant <$> jVariantName <*> gen
 
-jVariantName :: Jack VariantName
+jVariantName :: Gen VariantName
 jVariantName =
-  VariantName <$> elements weather
+  VariantName <$> Gen.element weather
 
 ------------------------------------------------------------------------
 
@@ -240,38 +241,38 @@ columnSchemaV0 = \case
   Schema.Reversed schema ->
     Schema.Reversed $ columnSchemaV0 schema
 
-jTableSchema :: Jack Schema.Table
+jTableSchema :: Gen Schema.Table
 jTableSchema =
-  reshrink tableSchemaTables $
-  oneOfRec [
+  Gen.shrink tableSchemaTables $
+  Gen.recursive Gen.choice [
       Schema.Binary <$> jDefault <*> jBinaryEncoding
     ] [
       Schema.Array <$> jDefault <*> jColumnSchema
     , jMapSchema
     ]
 
-jDefault :: Jack Default
+jDefault :: Gen Default
 jDefault =
-  elements [
+  Gen.element [
       DenyDefault
     , AllowDefault
     ]
 
-jBinaryEncoding :: Jack Encoding.Binary
+jBinaryEncoding :: Gen Encoding.Binary
 jBinaryEncoding =
-  elements [
+  Gen.element [
       Encoding.Binary
     , Encoding.Utf8
     ]
 
-jMapSchema :: Jack Schema.Table
+jMapSchema :: Gen Schema.Table
 jMapSchema =
   Schema.Map <$> jDefault <*> jColumnSchema <*> jColumnSchema
 
-jColumnSchema :: Jack Schema.Column
+jColumnSchema :: Gen Schema.Column
 jColumnSchema =
-  reshrink columnSchemaColumns $
-  oneOfRec [
+  Gen.shrink columnSchemaColumns $
+  Gen.recursive Gen.choice [
       Schema.Int <$> jDefault <*> jIntEncoding
     , Schema.Double <$> jDefault
     ] [
@@ -281,9 +282,9 @@ jColumnSchema =
     , Schema.Reversed <$> jColumnSchema
     ]
 
-jIntEncoding :: Jack Encoding.Int
+jIntEncoding :: Gen Encoding.Int
 jIntEncoding =
-  elements [
+  Gen.element [
       Encoding.Int
     , Encoding.Date
     , Encoding.TimeSeconds
@@ -293,7 +294,7 @@ jIntEncoding =
 
 ------------------------------------------------------------------------
 
-jExpandedTableSchema :: Schema.Table -> Jack Schema.Table
+jExpandedTableSchema :: Schema.Table -> Gen Schema.Table
 jExpandedTableSchema = \case
   Schema.Binary def encoding ->
     pure $ Schema.Binary def encoding
@@ -302,7 +303,7 @@ jExpandedTableSchema = \case
   Schema.Map def k v ->
     Schema.Map def k <$> jExpandedColumnSchema v
 
-jExpandedColumnSchema :: Schema.Column -> Jack Schema.Column
+jExpandedColumnSchema :: Schema.Column -> Gen Schema.Column
 jExpandedColumnSchema = \case
   Schema.Unit ->
     pure Schema.Unit
@@ -314,20 +315,20 @@ jExpandedColumnSchema = \case
     Schema.Enum def <$> traverse (traverse jExpandedColumnSchema) vs
   Schema.Struct def fs0 -> do
     fs1 <- Cons.toList <$> traverse (traverse jExpandedColumnSchema) fs0
-    fs2 <- fmap2 (fmap (Schema.withDefaultColumn AllowDefault)) <$> listOfN 0 3 $ jField jColumnSchema
+    fs2 <- fmap2 (fmap (Schema.withDefaultColumn AllowDefault)) <$> Gen.list (Range.linear 0 3) $ jField jColumnSchema
 
     let
       fs3 =
         ordNubBy (comparing fieldName) (fs1 <> fs2)
 
-    fs4 <- shuffle fs3
+    fs4 <- Gen.shuffle fs3
     pure . Schema.Struct def $ Cons.unsafeFromList fs4
   Schema.Nested x ->
     Schema.Nested <$> jExpandedTableSchema x
   Schema.Reversed x ->
     Schema.Reversed <$> jExpandedColumnSchema x
 
-jContractedTableSchema :: Schema.Table -> Jack Schema.Table
+jContractedTableSchema :: Schema.Table -> Gen Schema.Table
 jContractedTableSchema = \case
   Schema.Binary def encoding ->
     pure $ Schema.Binary def encoding
@@ -336,7 +337,7 @@ jContractedTableSchema = \case
   Schema.Map def k v ->
     Schema.Map def k <$> jContractedColumnSchema v
 
-jContractedColumnSchema :: Schema.Column -> Jack Schema.Column
+jContractedColumnSchema :: Schema.Column -> Gen Schema.Column
 jContractedColumnSchema = \case
   Schema.Unit ->
     pure Schema.Unit
@@ -348,7 +349,7 @@ jContractedColumnSchema = \case
     Schema.Enum def <$> traverse (traverse jContractedColumnSchema) vs
   Schema.Struct def fs0 -> do
     fs1 <- Cons.toList <$> traverse (traverse jContractedColumnSchema) fs0
-    fs2 <- sublistOf fs1 `suchThat` (not . null)
+    fs2 <- Gen.filter (not . null) $ Gen.subsequence fs1
     pure . Schema.Struct def $ Cons.unsafeFromList fs2
   Schema.Nested x ->
     Schema.Nested <$> jContractedTableSchema x
@@ -412,36 +413,36 @@ columnColumns = \case
   Striped.Reversed column ->
     columnColumns column
 
-jSizedStriped :: Jack Striped.Table
+jSizedStriped :: Gen Striped.Table
 jSizedStriped =
-  sized $ \size ->
-    jStriped =<< chooseInt (0, size `div` 5)
+  Gen.sized $ \size ->
+    jStriped =<< Gen.integral (Range.linear 0 (unSize size `div` 5))
 
-jStriped :: Int -> Jack Striped.Table
+jStriped :: Int -> Gen Striped.Table
 jStriped n =
-  reshrink tableTables $
-  oneOfRec [
+  Gen.shrink tableTables $
+  Gen.recursive Gen.choice [
       jStripedBinary n
     ] [
       jStripedArray n
     , jStripedMap n
     ]
 
-jByteString :: Int -> Jack ByteString
+jByteString :: Int -> Gen ByteString
 jByteString n =
-  oneOf [
+  Gen.choice [
       Char8.pack
-        <$> vectorOf n (fmap Char.chr $ chooseInt (Char.ord 'a', Char.ord 'z'))
+        <$> vectorOf n (fmap Char.chr $ Gen.int (Range.linear (Char.ord 'a') (Char.ord 'z')))
     , ByteString.pack
-        <$> vectorOf n boundedEnum
+        <$> vectorOf n Gen.enumBounded
     ]
 
-jUtf8 :: Int -> Jack ByteString
+jUtf8 :: Int -> Gen ByteString
 jUtf8 n =
   fmap (fixupUtf8 n) $
-  oneOf [
-      vectorOf n (fmap Char.chr $ chooseInt (Char.ord 'a', Char.ord 'z'))
-    , vectorOf n (fmap Char.chr $ chooseInt (Char.ord minBound, Char.ord maxBound))
+  Gen.choice [
+      vectorOf n (fmap Char.chr $ Gen.int (Range.linear (Char.ord 'a') (Char.ord 'z')))
+    , vectorOf n (fmap Char.chr $ Gen.int (Range.linear (Char.ord minBound) (Char.ord maxBound)))
     ]
 
 fixupUtf8 :: Int -> [Char] -> ByteString
@@ -459,7 +460,7 @@ fixupUtf8 n xs =
       -- pad with trash to make exactly 'n' bytes
       bs <> Char8.replicate (n - m) 'x'
 
-jStripedBinary  :: Int -> Jack Striped.Table
+jStripedBinary  :: Int -> Gen Striped.Table
 jStripedBinary n = do
   encoding <- jBinaryEncoding
   case encoding of
@@ -471,24 +472,24 @@ jStripedBinary n = do
       -- FIXME tests which generate striped tables don't care at the moment.
       Striped.Binary <$> jDefault <*> pure encoding <*> jUtf8 n
 
-jStripedArray :: Int -> Jack Striped.Table
+jStripedArray :: Int -> Gen Striped.Table
 jStripedArray n = do
   Striped.Array
     <$> jDefault
     <*> jStripedColumn n
 
 -- FIXME this constructs a corrupt table
-jStripedMap :: Int -> Jack Striped.Table
+jStripedMap :: Int -> Gen Striped.Table
 jStripedMap n = do
   Striped.Map
     <$> jDefault
     <*> jStripedColumn n
     <*> jStripedColumn n
 
-jStripedColumn :: Int -> Jack Striped.Column
+jStripedColumn :: Int -> Gen Striped.Column
 jStripedColumn n =
-  reshrink columnColumns $
-  oneOfRec [
+  Gen.shrink columnColumns $
+  Gen.recursive Gen.choice [
       jStripedInt n
     , jStripedDouble n
     ] [
@@ -498,73 +499,73 @@ jStripedColumn n =
     , jStripedReversed n
     ]
 
-jStripedInt :: Int -> Jack Striped.Column
+jStripedInt :: Int -> Gen Striped.Column
 jStripedInt n =
   Striped.Int
     <$> jDefault
     <*> jIntEncoding
-    <*> (Storable.fromList <$> vectorOf n sizedBounded)
+    <*> (Storable.fromList <$> vectorOf n (Gen.integral (Range.linear minBound maxBound)))
 
-jStripedDouble :: Int -> Jack Striped.Column
+jStripedDouble :: Int -> Gen Striped.Column
 jStripedDouble n =
   Striped.Double
     <$> jDefault
-    <*> (Storable.fromList <$> vectorOf n arbitrary)
+    <*> (Storable.fromList <$> vectorOf n Gen.arbitrary)
 
-jStripedEnum :: Int -> Jack Striped.Column
+jStripedEnum :: Int -> Gen Striped.Column
 jStripedEnum n = do
-  sized $ \size -> do
-    ntags <- chooseInt (1, 1 + (size `div` 10))
-    tags <- Storable.fromList . fmap fromIntegral <$> vectorOf n (chooseInt (0, ntags - 1))
+  Gen.sized $ \size -> do
+    ntags <- Gen.integral (Range.linear 1 (1 + (unSize size `div` 10)))
+    tags <- Storable.fromList . fmap fromIntegral <$> vectorOf n (Gen.int (Range.linear 0 (ntags - 1)))
     vs <- Cons.unsafeFromList <$> vectorOf ntags (jVariant . jStripedColumn $ Storable.length tags)
     def <- jDefault
     pure $
       Striped.Enum def tags vs
 
-jStripedStruct :: Int -> Jack Striped.Column
+jStripedStruct :: Int -> Gen Striped.Column
 jStripedStruct n =
   Striped.Struct
     <$> jDefault
     <*> smallConsUniqueBy fieldName (jField (jStripedColumn n))
 
-jStripedNested :: Int -> Jack Striped.Column
+jStripedNested :: Int -> Gen Striped.Column
 jStripedNested n =
-  sized $ \size -> do
-    ns <- Storable.fromList . fmap fromIntegral <$> vectorOf n (chooseInt (0, size `div` 10))
+  Gen.sized $ \size -> do
+    ns <- Storable.fromList . fmap fromIntegral <$> vectorOf n (Gen.integral (Range.linear 0 (size `div` 10)))
     Striped.Nested ns <$> jStriped (fromIntegral $ Storable.sum ns)
 
-jStripedReversed :: Int -> Jack Striped.Column
+jStripedReversed :: Int -> Gen Striped.Column
 jStripedReversed n =
   Striped.Reversed <$> jStripedColumn n
 
 ------------------------------------------------------------------------
 
-jFacts :: [Schema.Column] -> Jack [Fact]
+jFacts :: [Schema.Column] -> Gen [Fact]
 jFacts schemas =
   fmap (List.sort . List.concat) .
-  scale (`div` max 1 (length schemas)) $
-  zipWithM (\e a -> listOf $ jFact e a) schemas (fmap Factset.AttributeId [0..])
+  Gen.scale (`div` max 1 (Size (length schemas))) $
+  zipWithM (\e a -> Gen.list (Range.linear 0 100) $ jFact e a) schemas (fmap Factset.AttributeId [0..])
 
-jFact :: Schema.Column -> Factset.AttributeId -> Jack Fact
+jFact :: Schema.Column -> Factset.AttributeId -> Gen Fact
 jFact schema aid =
   uncurry Fact
     <$> jEntityHashId
     <*> pure aid
     <*> jFactsetTime
     <*> jFactsetId
-    <*> (strictMaybe <$> maybeOf (jLogicalValue schema))
+    <*> (strictMaybe <$> Gen.maybe (jLogicalValue schema))
 
-jSizedLogical :: Schema.Table -> Jack Logical.Table
+jSizedLogical :: Schema.Table -> Gen Logical.Table
 jSizedLogical schema =
-  sized $ \size ->
-    jLogical schema =<< chooseInt (0, size `div` 5)
+  Gen.sized $ \size ->
+    jLogical schema =<< Gen.int (Range.linear 0 (unSize size `div` 5))
 
-jSizedLogical1 :: Schema.Table -> Jack Logical.Table
+jSizedLogical1 :: Schema.Table -> Gen Logical.Table
 jSizedLogical1 schema =
-  sized $ \size ->
-    jLogical schema =<< chooseInt (1, max 1 (size `div` 5))
+  Gen.sized $ \size ->
+    jLogical schema =<< Gen.int (Range.linear 1 (max 1 (unSize size `div` 5)))
 
-jLogical :: Schema.Table -> Int -> Jack Logical.Table
+jLogical :: Schema.Table -> Int -> Gen Logical.Table
 jLogical tschema n =
   case tschema of
     Schema.Binary _ Encoding.Binary ->
@@ -576,21 +577,21 @@ jLogical tschema n =
     Schema.Map _ k v ->
       Logical.Map . Map.fromList <$> vectorOf n (jMapping k v)
 
-jMapping :: Schema.Column -> Schema.Column -> Jack (Logical.Value, Logical.Value)
+jMapping :: Schema.Column -> Schema.Column -> Gen (Logical.Value, Logical.Value)
 jMapping k v =
   (,) <$> jLogicalValue k <*> jLogicalValue v
 
-jTag :: Cons Boxed.Vector (Variant a) -> Jack Tag
+jTag :: Cons Boxed.Vector (Variant a) -> Gen Tag
 jTag xs =
-  fromIntegral <$> choose (0, Cons.length xs - 1)
+  fromIntegral <$> Gen.integral (Range.linear 0 (Cons.length xs - 1))
 
-jLogicalValue :: Schema.Column -> Jack Logical.Value
+jLogicalValue :: Schema.Column -> Gen Logical.Value
 jLogicalValue = \case
   Schema.Unit ->
     pure Logical.Unit
 
   Schema.Int _ Encoding.Int ->
-    Logical.Int <$> sizedBounded
+    Logical.Int <$> Gen.integral (Range.linear minBound maxBound)
 
   Schema.Int _ Encoding.Date ->
     Logical.Int . Encoding.encodeDate <$> jDate
@@ -605,7 +606,7 @@ jLogicalValue = \case
     Logical.Int . Encoding.encodeTimeMicroseconds <$> jTime
 
   Schema.Double _ ->
-    Logical.Double <$> arbitrary
+    Logical.Double <$> Gen.arbitrary
 
   Schema.Enum _ variants -> do
     tag <- jTag variants
@@ -619,8 +620,8 @@ jLogicalValue = \case
     Logical.Struct <$> traverse (jLogicalValue . fieldData) fields
 
   Schema.Nested tschema ->
-    sized $ \size -> do
-      fmap Logical.Nested $ jLogical tschema =<< chooseInt (0, size `div` 10)
+    Gen.sized $ \size -> do
+      fmap Logical.Nested $ jLogical tschema =<< Gen.int (Range.linear 0 (unSize size `div` 10))
 
   Schema.Reversed schema ->
     Logical.Reversed <$> jLogicalValue schema
@@ -635,23 +636,23 @@ renderTagLookupError tag variants =
   (List.concatMap ("\n    " <>) . List.lines $ ppShow variants) <>
   "\n"
 
-jBinaryVersion :: Jack BinaryVersion
+jBinaryVersion :: Gen BinaryVersion
 jBinaryVersion =
-  elements [BinaryV2, BinaryV3]
+  Gen.element [BinaryV2, BinaryV3]
 
-jEntityId :: Jack Factset.EntityId
+jEntityId :: Gen Factset.EntityId
 jEntityId =
   let
     mkEnt :: ByteString -> Int -> Factset.EntityId
     mkEnt name num =
       Factset.EntityId $ name <> Char8.pack (printf "-%03d" num)
   in
-    oneOf [
-        mkEnt <$> elements southpark <*> pure 0
-      , mkEnt <$> elements southpark <*> chooseInt (0, 999)
+    Gen.choice [
+        mkEnt <$> Gen.element southpark <*> pure 0
+      , mkEnt <$> Gen.element southpark <*> Gen.int (Range.linear 0 999)
       ]
 
-jEntityHashId :: Jack (Factset.EntityHash, Factset.EntityId)
+jEntityHashId :: Gen (Factset.EntityHash, Factset.EntityId)
 jEntityHashId =
   let
     hash eid =
@@ -660,110 +661,110 @@ jEntityHashId =
   in
     (\eid -> (hash eid, eid)) <$> jEntityId
 
-jAttributeId :: Jack Factset.AttributeId
+jAttributeId :: Gen Factset.AttributeId
 jAttributeId =
-  Factset.AttributeId <$> choose (0, 10000)
+  Factset.AttributeId <$> Gen.integral (Range.linear 0 10000)
 
-jAttributeName :: Jack Factset.AttributeName
+jAttributeName :: Gen Factset.AttributeName
 jAttributeName =
-  Factset.AttributeName <$> oneOf [elements muppets, arbitrary]
+  Factset.AttributeName <$> Gen.choice [Gen.element muppets, Gen.arbitrary]
 
-jFactsetTime :: Jack Factset.Time
+jFactsetTime :: Gen Factset.Time
 jFactsetTime =
-  oneOf [
-      Factset.Time <$> choose (0, 5)
+  Gen.choice [
+      Factset.Time <$> Gen.integral (Range.linear 0 5)
     , Factset.fromDay <$> jFactsetDay
     ]
 
-jFactsetDay :: Jack Thyme.Day
+jFactsetDay :: Gen Thyme.Day
 jFactsetDay =
-  justOf . fmap Thyme.gregorianValid $
+  Gen.just . fmap Thyme.gregorianValid $
     Thyme.YearMonthDay
       <$> jFactsetYear
-      <*> chooseInt (1, 12)
-      <*> chooseInt (1, 31)
+      <*> Gen.int (Range.linear 1 12)
+      <*> Gen.int (Range.linear 1 31)
 
-jFactsetYear :: Jack Thyme.Year
+jFactsetYear :: Gen Thyme.Year
 jFactsetYear =
-  mkJack (shrinkTowards 2000) $ QC.choose (1600, 3000)
+  Gen.integral (Range.linearFrom 2000 1600 3000)
 
-jFactsetId :: Jack Factset.FactsetId
+jFactsetId :: Gen Factset.FactsetId
 jFactsetId =
-  oneOf [
-      Factset.FactsetId <$> choose (0, 5)
-    , Factset.FactsetId <$> choose (0, 100000)
+  Gen.choice [
+      Factset.FactsetId <$> Gen.integral (Range.linear 0 5)
+    , Factset.FactsetId <$> Gen.integral (Range.linear 0 100000)
     ]
 
-jBlock :: Jack Block
+jBlock :: Gen Block
 jBlock = do
-  schemas <- listOfN 0 5 jColumnSchema
+  schemas <- Gen.list (Range.linear 0 5) jColumnSchema
   facts <- jFacts schemas
   pure $
     case blockOfFacts (Boxed.fromList schemas) (Boxed.fromList facts) of
       Left x ->
-        Savage.error $ "Test.Zebra.Jack.jBlock: invariant failed: " <> show x
+        Savage.error $ "Test.Zebra.Gen.jBlock: invariant failed: " <> show x
       Right x ->
         x
 
 -- The blocks generated by this can contain data with broken invariants.
-jYoloBlock :: Jack Block
+jYoloBlock :: Gen Block
 jYoloBlock = do
-  sized $ \size ->
+  Gen.sized $ \size ->
     Block
-      <$> (Boxed.fromList <$> listOfN 0 (size `div` 5) jBlockEntity)
-      <*> (Unboxed.fromList <$> listOfN 0 (size `div` 5) jBlockIndex)
-      <*> (Boxed.fromList <$> listOfN 0 (size `div` 5)
-            (fmap (Striped.Array DenyDefault) . jStripedColumn =<< chooseInt (0, size `div` 5)))
+      <$> (Boxed.fromList <$> Gen.list (Range.linear 0 (unSize size `div` 5)) jBlockEntity)
+      <*> (Unboxed.fromList <$> Gen.list (Range.linear 0 (unSize size `div` 5)) jBlockIndex)
+      <*> (Boxed.fromList <$> Gen.list (Range.linear 0 (unSize size `div` 5))
+            (fmap (Striped.Array DenyDefault) . jStripedColumn =<< Gen.int (Range.linear 0 (unSize size `div` 5))))
 
-jBlockEntity :: Jack BlockEntity
+jBlockEntity :: Gen BlockEntity
 jBlockEntity =
   uncurry BlockEntity
     <$> jEntityHashId
-    <*> (Unboxed.fromList <$> listOf jBlockAttribute)
+    <*> (Unboxed.fromList <$> Gen.list (Range.linear 0 100) jBlockAttribute)
 
-jBlockAttribute :: Jack BlockAttribute
+jBlockAttribute :: Gen BlockAttribute
 jBlockAttribute =
   BlockAttribute
     <$> jAttributeId
-    <*> choose (0, 1000000)
+    <*> Gen.integral (Range.linear 0 1000000)
 
-jBlockIndex :: Jack BlockIndex
+jBlockIndex :: Gen BlockIndex
 jBlockIndex =
   BlockIndex
     <$> jFactsetTime
     <*> jFactsetId
     <*> jTombstone
 
-jEntity :: Jack Entity
+jEntity :: Gen Entity
 jEntity =
   uncurry Entity
     <$> jEntityHashId
-    <*> (Boxed.fromList <$> listOf jAttribute)
+    <*> (Boxed.fromList <$> Gen.list (Range.linear 0 100) jAttribute)
 
-jAttribute :: Jack Attribute
+jAttribute :: Gen Attribute
 jAttribute = do
-  (ts, ps, bs) <- List.unzip3 <$> listOf ((,,) <$> jFactsetTime <*> jFactsetId <*> jTombstone)
+  (ts, ps, bs) <- List.unzip3 <$> Gen.list (Range.linear 0 100) ((,,) <$> jFactsetTime <*> jFactsetId <*> jTombstone)
   Attribute
     <$> pure (Storable.fromList ts)
     <*> pure (Storable.fromList ps)
     <*> pure (Storable.fromList bs)
     <*> jStripedArray (List.length ts)
 
-jTombstone :: Jack Tombstone
+jTombstone :: Gen Tombstone
 jTombstone =
-  elements [
+  Gen.element [
       NotTombstone
     , Tombstone
     ]
 
-jMaybe' :: Jack a -> Jack (Maybe' a)
+jMaybe' :: Gen a -> Gen (Maybe' a)
 jMaybe' j =
-  oneOfRec [ pure Nothing' ] [ Just' <$> j ]
+  Gen.recursive Gen.choice [ pure Nothing' ] [ Just' <$> j ]
 
-smallConsUniqueBy :: Ord b => (a -> b) -> Jack a -> Jack (Cons Boxed.Vector a)
+smallConsUniqueBy :: Ord b => (a -> b) -> Gen a -> Gen (Cons Boxed.Vector a)
 smallConsUniqueBy f gen =
-  sized $ \n ->
-    Cons.unsafeFromList . ordNubBy (comparing f) <$> listOfN 1 (1 + (n `div` 10)) gen
+  Gen.sized $ \size ->
+    Cons.unsafeFromList . ordNubBy (comparing f) <$> Gen.list (Range.linear 1  (1 + (unSize size `div` 10))) gen
 
 ------------------------------------------------------------------------
 
@@ -804,37 +805,47 @@ normalizeLogicalValue = \case
 
 ------------------------------------------------------------------------
 
-trippingBoth :: (Monad m, Show (m a), Show (m b), Eq (m a)) => (a -> m b) -> (b -> m a) -> a -> Property
-trippingBoth to from x =
+trippingBoth ::
+     (MonadTest m, Monad f, Show b, Show (f a), Eq (f a))
+  => a
+  -> (a -> f b)
+  -> (b -> f a)
+  -> m ()
+trippingBoth x encode decode = do
   let
-    original =
+    mx =
       pure x
 
-    intermediate =
-      to x
+    my =
+      encode x >>= decode
 
-    roundtrip =
-      from =<< intermediate
-  in
-    counterexample "" .
-    counterexample "Roundtrip failed." .
-    counterexample "" .
-    counterexample "=== Intermediate ===" .
-    counterexample (ppShow intermediate) .
-    counterexample "" $
-      property (original === roundtrip)
+  annotate $ Savage.unlines [
+      "━━━ Original ━━━"
+    , show mx
+    , "━━━ Roundtrip ━━━"
+    , show my
+    ]
+
+  mx === my
+
+gamble :: Show a => Gen a -> (a -> PropertyT Savage.IO ()) -> Property
+gamble gen prop =
+  property $
+    forAll gen >>= prop
 
 withList :: (Stream (Of a) Identity () -> Stream (Of b) (EitherT x Identity) ()) -> [a] -> Either x [b]
 withList f =
   runIdentity . runEitherT . Stream.toList_ . f . Stream.each
 
-testEither :: Show a => Either a Property -> Property
-testEither =
-  either (flip counterexample False . ppShow) property
-
-discardLeft :: Either x a -> a
+discardLeft :: Monad m => Either x a -> PropertyT m a
 discardLeft = \case
   Left _ ->
     discard
   Right a ->
-    a
+    pure a
+
+vectorOf :: Int -> Gen a -> Gen [a]
+vectorOf = Gen.list . Range.singleton
+
+listOf :: Gen a -> Gen [a]
+listOf = Gen.list (Range.linear 0 100)

@@ -2,8 +2,9 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Test.Zebra.Table.Logical where
 
+import           Disorder.Core.Run  (disorderCheckAll)
 import           Disorder.Jack (Property)
-import           Disorder.Jack ((===), (==>), quickCheckAll, gamble)
+import           Disorder.Jack ((===), (==>), gamble)
 
 import qualified Data.Vector as Boxed
 
@@ -57,4 +58,4 @@ prop_ord_1 =
 return []
 tests :: IO Bool
 tests =
-  $quickCheckAll
+  $disorderCheckAll

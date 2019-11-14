@@ -8,8 +8,10 @@ import           Data.String (String)
 import qualified Data.Vector as Boxed
 import qualified Data.Map as Map
 
-import           Disorder.Jack (Property, Jack, quickCheckAll, property, discard)
-import           Disorder.Jack ((===), (==>), gamble, counterexample, oneOf, listOfN, sized, chooseInt, choose)
+import           Hedgehog
+import qualified Hedgehog.Gen as Gen
+import           Hedgehog.Gen.QuickCheck (arbitrary)
+import qualified Hedgehog.Range as Range
 
 import           P
 
@@ -33,14 +35,14 @@ import           Zebra.Table.Striped (StripedError(..))
 import qualified Zebra.Table.Striped as Striped
 import qualified Zebra.Table.Logical as Logical
 
-jFileTable :: Schema.Table -> Jack Striped.Table
+jFileTable :: Schema.Table -> Gen Striped.Table
 jFileTable schema = do
-  sized $ \size -> do
-    n <- chooseInt (0, 20 * (size `div` 5))
+  Gen.sized $ \size -> do
+    n <- Gen.int (Range.linear 0 (20 * (unSize size `div` 5)))
     x <- Striped.fromLogical schema <$> jLogical schema n
-    either (const discard) pure x
+    either (const Gen.discard) pure x
 
-jSplits :: Striped.Table -> Jack (NonEmpty Striped.Table)
+jSplits :: Striped.Table -> Gen (NonEmpty Striped.Table)
 jSplits x =
   let
     n =
@@ -49,7 +51,7 @@ jSplits x =
     if n == 0 then
       pure $ x :| []
     else do
-      ix <- chooseInt (1, min n 20)
+      ix <- Gen.int (Range.linear 1 (min n 20))
 
       let
         (y, z) =
@@ -58,13 +60,13 @@ jSplits x =
       ys <- jSplits z
       pure $ y :| toList ys
 
-jFile :: Schema.Table -> Jack (NonEmpty Striped.Table)
+jFile :: Schema.Table -> Gen (NonEmpty Striped.Table)
 jFile schema = do
   jSplits =<< jFileTable schema
 
-jModSchema :: Schema.Table -> Jack Schema.Table
+jModSchema :: Schema.Table -> Gen Schema.Table
 jModSchema schema =
-  oneOf [
+  Gen.choice [
       pure schema
     , jExpandedTableSchema schema
     , jContractedTableSchema schema
@@ -102,10 +104,10 @@ unionList msize xss0 =
               pure $ pure x
 
 prop_union_identity :: Property
-prop_union_identity =
-  gamble jMapSchema $ \schema ->
-  gamble (jFile schema) $ \file0 ->
-  either (flip counterexample False) id $ do
+prop_union_identity = property $ do
+  schema <- forAll jMapSchema
+  file0  <- forAll (jFile schema)
+  either (\x -> annotate x >> failure) (const success) $ do
     let
       files =
         Cons.from2 file0 (Striped.empty schema :| [])
@@ -117,62 +119,65 @@ prop_union_identity =
     x <- first ppShow $ unionList Nothing files
     pure $
       Just (normalizeStriped file)
-      ===
+      ==
       fmap normalizeStriped x
 
 prop_union_files_same_schema :: Property
-prop_union_files_same_schema =
-  gamble jMapSchema $ \schema ->
-  gamble (Cons.unsafeFromList <$> listOfN 1 10 (jFile schema)) $ \files ->
-  either (flip counterexample False) id $ do
+prop_union_files_same_schema = property $ do
+  schema <- forAll jMapSchema
+  files  <- forAll (Cons.unsafeFromList <$> Gen.list (Range.linear 1 10) (jFile schema))
+
+  either (\x -> annotate x >> failure) (const success) $ do
     x <- first ppShow $ unionSimple files
     y <- first ppShow $ unionList Nothing files
     pure $
       fmap normalizeStriped x
-      ===
+      ==
       fmap normalizeStriped y
 
 prop_union_files_empty :: Property
-prop_union_files_empty =
-  gamble jMapSchema $ \schema ->
-  gamble (Cons.unsafeFromList <$> listOfN 1 10 (jFile schema)) $ \files ->
-  either (flip counterexample False) id $ do
+prop_union_files_empty = property $ do
+  schema  <- forAll jMapSchema
+  files   <- forAll (Cons.unsafeFromList <$> Gen.list (Range.linear 1 10) (jFile schema))
+
+  either (\x -> annotate x >> failure) (const success) $ do
     x <- first ppShow $ unionList (Just (Merge.MaximumRowSize (-1))) files
     pure $
-      Just (Striped.empty schema) === x
+      Just (Striped.empty schema) == x
 
 prop_union_files_diff_schema :: Property
-prop_union_files_diff_schema =
-  counterexample "=== Schema ===" $
-  gamble jMapSchema $ \schema ->
-  counterexample "=== Modified Schemas ===" $
-  gamble (Cons.unsafeFromList <$> listOfN 1 10 (jModSchema schema)) $ \schemas ->
-  isRight (Cons.fold1M' Schema.union schemas) ==>
-  counterexample "=== Files ===" $
-  gamble (traverse jFile schemas) $ \files ->
-  either (flip counterexample False) id $ do
+prop_union_files_diff_schema = property $ do
+  schema  <- forAll jMapSchema
+  schemas <- forAll (Cons.unsafeFromList <$> Gen.list (Range.linear 1 10) (jModSchema schema))
+
+  when (isLeft (Cons.fold1M' Schema.union schemas)) discard
+
+  files <- forAll (traverse jFile schemas)
+
+  either (\x -> annotate x >> failure) (const success) $ do
     x <- first ppShow $ unionSimple files
     y <- first ppShow $ unionList Nothing files
     pure $
       fmap normalizeStriped x
-      ===
+      ==
       fmap normalizeStriped y
 
 prop_union_with_max_is_submap :: Property
-prop_union_with_max_is_submap =
-  gamble jMapSchema $ \schema ->
-  gamble (Cons.unsafeFromList <$> listOfN 1 10 (jFile schema)) $ \files ->
-  gamble (choose ((-1),100)) $ \msize ->
-  either (flip counterexample False) property $ do
+prop_union_with_max_is_submap = property $ do
+  schema <- forAll jMapSchema
+  files  <- forAll (Cons.unsafeFromList <$> Gen.list (Range.linear 1 10) (jFile schema))
+  msize  <- forAll (Gen.integral (Range.linear (-1) 100))
+  either (\x -> annotate x >> failure) (const success) $ do
     x0 <- first ppShow $ unionList (Just (Merge.MaximumRowSize msize)) files
     y0 <- first ppShow $ unionSimple files
     ok <- for (liftA2 (,) x0 y0) $ \(x1, y1) -> do
       x2 <- first ppShow . Logical.takeMap =<< first ppShow (Striped.toLogical x1)
       y2 <- first ppShow . Logical.takeMap =<< first ppShow (Striped.toLogical y1)
       return $ x2 `Map.isSubmapOf` y2
+
     return $ maybe True id ok
 
-return []
+
 tests :: IO Bool
 tests =
-  $quickCheckAll
+  checkParallel $$(discover)

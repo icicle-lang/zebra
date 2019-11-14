@@ -40,4 +40,4 @@ prop_union_associative =
 return []
 tests :: IO Bool
 tests =
-  $disorderCheckEnvAll TestRunMore
+  $disorderCheck

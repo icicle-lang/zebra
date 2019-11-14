@@ -7,8 +7,10 @@ module Test.Zebra.Merge.Entity where
 import qualified Data.List as List
 import qualified Data.Map as Map
 
-import           Disorder.Jack
-import           Disorder.Core.Run
+import           Hedgehog
+import qualified Hedgehog.Gen as Gen
+import           Hedgehog.Gen.QuickCheck (arbitrary)
+import qualified Hedgehog.Range as Range
 
 import           P
 
@@ -37,14 +39,8 @@ fakeBlockId = BlockDataId 0
 entityValuesOfBlock' :: BlockDataId -> Block -> Boxed.Vector EntityValues
 entityValuesOfBlock' blockId block = Stream.vectorOfStream $ entityValuesOfBlock blockId block
 
-ppCounter :: (Show a, Testable p) => Savage.String -> a -> p -> Property
-ppCounter heading thing prop
- = counterexample ("=== " <> heading <> " ===")
- $ counterexample (ppShow thing) prop
-
-
-jColumnSchemas :: Jack [Schema.Column]
-jColumnSchemas = listOfN 0 5 jColumnSchema
+jColumnSchemas :: Gen [Schema.Column]
+jColumnSchemas = Gen.list (Range.linear 0 5) jColumnSchema
 
 blockOfFacts' :: [Schema.Column] -> [Fact] -> Block
 blockOfFacts' schemas facts =
@@ -75,30 +71,35 @@ prop_entitiesOfBlock_indices =
    $ blockIndices block
 
 prop_entitiesOfBlock_tables_1_entity :: Property
-prop_entitiesOfBlock_tables_1_entity =
-  gamble jColumnSchemas $ \schemas ->
-  gamble (jFacts schemas) $ \facts ->
-  gamble jEntityHashId $ \(ehash,eid) ->
+prop_entitiesOfBlock_tables_1_entity = property $ do
+  schemas     <- forAll jColumnSchemas
+  facts       <- forAll (jFacts schemas)
+  (ehash,eid) <- forAll jEntityHashId
   let fixFact f = f { factEntityHash = ehash, factEntityId = eid }
       facts'    = List.sort $ fmap fixFact facts
       block     = blockOfFacts' schemas facts'
       es        = entityValuesOfBlock' fakeBlockId block
-  in  ppCounter "Block" block
-    $ ppCounter "Entities" es
-    ( length facts > 0
-    ==> Boxed.concatMap id (getFakeTableValues es) === blockTables block )
+  annotate "=== Block ==="
+  annotate (ppShow block)
+  annotate "=== Entities ==="
+  annotate (ppShow es)
+  when (null facts) discard
+
+  Boxed.concatMap id (getFakeTableValues es) === blockTables block
 
 getFakeTableValues :: Boxed.Vector EntityValues -> Boxed.Vector (Boxed.Vector Striped.Table)
 getFakeTableValues = fmap (fmap (Map.! fakeBlockId) . evTables)
 
 prop_mergeEntityTables_1_block :: Property
 prop_mergeEntityTables_1_block =
-  gamble jBlock $ \block ->
+  gamble jBlock $ \block -> do
   let es = entityValuesOfBlock' fakeBlockId block
       recs_l = mapM mergeEntityTables es
 
       recs_r = getFakeTableValues es
-  in  ppCounter "Entities" es (recs_l === Right recs_r)
+  annotate "=== Entities ==="
+  annotate (ppShow es)
+  recs_l === Right recs_r
 
 
 prop_treeFold_sum :: Property
@@ -112,6 +113,6 @@ prop_treeFold_with_map =
   List.sum (fmap (+1) bs) === treeFold (+) 0 (+1) (Boxed.fromList bs)
 
 
-return []
 tests :: IO Bool
-tests = $disorderCheckEnvAll TestRunNormal
+tests =
+  checkParallel $$(discover)

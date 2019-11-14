@@ -1,11 +1,25 @@
 name:                  ambiata-zebra-core-test
 version:               0.0.1
-cabal-version:         >= 1.8
+license:               BSD3
+license-file:          LICENSE
+author:                Ambiata <info@ambiata.com>
+maintainer:            Ambiata <info@ambiata.com>
 build-type:            Simple
+synopsis:              zebra
+category:              System
+description:           Zebra Test Generators
+cabal-version:         >= 1.8
+
+tested-with:
+  GHC==8.0.2,
+  GHC==8.2.2,
+  GHC==8.4.4,
+  GHC==8.6.5,
+  GHC==8.8.1
 
 library
   build-depends:
-                      base
+                      base                            >= 3          && < 5
                     , ambiata-anemone
                     , ambiata-disorder-core
                     , ambiata-disorder-corpus

@@ -7,19 +7,17 @@ import qualified Anemone.Foreign.Mempool as Mempool
 import           Anemone.Foreign.Segv (withSegv)
 
 import           Control.Monad.Catch (bracket)
+import           Control.Monad.IO.Class (liftIO)
 
 import qualified Data.List as List
 import qualified Data.Vector as Boxed
 
-import           Disorder.Core.IO (testIO)
-import           Disorder.Core.Run (disorderCheckEnvAll, ExpectedTestSpeed(..))
-import           Disorder.Corpus (southpark)
-import           Disorder.Jack (Property, counterexample)
-import           Disorder.Jack (gamble, (===))
-import           Disorder.Jack (Jack, sized)
-import           Disorder.Jack (listOf, listOfN, maybeOf, choose, elements, scale)
-
 import           P
+
+import           Hedgehog
+import           Hedgehog.Corpus (southpark)
+import qualified Hedgehog.Gen as Gen
+import qualified Hedgehog.Range as Range
 
 import           System.IO (IO)
 
@@ -45,61 +43,61 @@ import qualified Zebra.Merge.Puller.List as TestMerge
 -- Generators
 --
 
-jColumnSchemas :: Jack [Schema.Column]
-jColumnSchemas = listOfN 0 5 jColumnSchema
+jColumnSchemas :: Gen [Schema.Column]
+jColumnSchemas = Gen.list (Range.linear 0 5) jColumnSchema
 
-jSmallTime :: Jack Time
-jSmallTime = Time <$> choose (0, 100)
+jSmallTime :: Gen Time
+jSmallTime = Time <$> Gen.integral (Range.linear 0 100)
 
-jSmallFactsetId :: Jack FactsetId
-jSmallFactsetId = FactsetId <$> choose (0, 100)
+jSmallFactsetId :: Gen FactsetId
+jSmallFactsetId = FactsetId <$> Gen.integral (Range.linear 0 100)
 
 -- | Fact for a single entity
-jFactForEntity :: (EntityHash, EntityId) -> Schema.Column -> AttributeId -> Jack Fact
+jFactForEntity :: (EntityHash, EntityId) -> Schema.Column -> AttributeId -> Gen Fact
 jFactForEntity eid schema aid =
   uncurry Fact
     <$> pure eid
     <*> pure aid
     <*> jSmallTime
     <*> jSmallFactsetId
-    <*> (strictMaybe <$> maybeOf (jLogicalValue schema))
+    <*> (strictMaybe <$> Gen.maybe (jLogicalValue schema))
 
 -- | Generate a bunch of facts that all have the same entity
 -- Used for testing merging the same entity
-jFactsFor :: (EntityHash, EntityId) -> [Schema.Column] -> Jack [Fact]
-jFactsFor eid schemas = sized $ \size -> do
+jFactsFor :: (EntityHash, EntityId) -> [Schema.Column] -> Gen [Fact]
+jFactsFor eid schemas = Gen.sized $ \size -> do
   let schemas' = List.zip schemas (fmap AttributeId [0..])
-  let maxFacts = size `div` length schemas
-  sortFacts . List.concat <$> mapM (\(enc,aid) -> listOfN 0 maxFacts $ jFactForEntity eid enc aid) schemas'
+  let maxFacts = unSize size `div` length schemas
+  sortFacts . List.concat <$> mapM (\(enc,aid) -> Gen.list (Range.linear 0 maxFacts) $ jFactForEntity eid enc aid) schemas'
 
 
-jSmallEntity :: Jack (EntityHash, EntityId)
+jSmallEntity :: Gen (EntityHash, EntityId)
 jSmallEntity =
   let
     hash eid =
       EntityHash $ unEntityHash (hashEntityId eid) `mod` 10
   in
-    (\eid -> (hash eid, eid)) <$> (EntityId <$> elements southpark)
+    (\eid -> (hash eid, eid)) <$> (EntityId <$> Gen.element southpark)
 
-jSmallFact :: Schema.Column -> AttributeId -> Jack Fact
+jSmallFact :: Schema.Column -> AttributeId -> Gen Fact
 jSmallFact schema aid =
   uncurry Fact
     <$> jSmallEntity
     <*> pure aid
     <*> jSmallTime
     <*> jSmallFactsetId
-    <*> (strictMaybe <$> maybeOf (jLogicalValue schema))
+    <*> (strictMaybe <$> Gen.maybe (jLogicalValue schema))
 
 
-jSmallFacts :: [Schema.Column] -> Jack [Fact]
+jSmallFacts :: [Schema.Column] -> Gen [Fact]
 jSmallFacts schemas =
   fmap (sortFacts . List.concat) .
-  scale (`div` max 1 (length schemas)) $
-  zipWithM (\e a -> listOf $ jSmallFact e a) schemas (fmap AttributeId [0..])
+  Gen.scale (`div` max 1 (Size (length schemas))) $
+  zipWithM (\e a -> Gen.list (Range.linear 0 100) $ jSmallFact e a) schemas (fmap AttributeId [0..])
 
 -- Some smallish number of megabytes to garbage collect by
-jGarbageCollectEvery :: Jack Int64
-jGarbageCollectEvery = choose (0, 10 * 1024 * 1024)
+jGarbageCollectEvery :: Gen Int64
+jGarbageCollectEvery = Gen.integral (Range.linear 0 (10 * 1024 * 1024))
 
 
 
@@ -122,11 +120,11 @@ bisectBlockFacts split fs =
    = List.span (\f' -> factEntity f == factEntity f')
 
 -- | Generate a pair of facts that can be used as blocks in a single file
-jBlockPair :: (FactsetId -> FactsetId) -> [Schema.Column] -> Jack ([Fact],[Fact])
+jBlockPair :: (FactsetId -> FactsetId) -> [Schema.Column] -> Gen ([Fact],[Fact])
 jBlockPair factsetId_mode schemas = do
   fs <- jSmallFacts schemas
   let fs' = fmap (\f -> f { factFactsetId = factsetId_mode $ factFactsetId f }) fs
-  split <- choose (0, length fs')
+  split <- Gen.integral (Range.linear 0 (length fs'))
   return $ bisectBlockFacts split fs'
 
 -- | Construct a C Block from a bunch of facts
@@ -157,71 +155,82 @@ sortFacts = List.sortBy cmp
 
 -- | Merge facts for same entity. We should not segfault
 prop_merge_1_entity_no_segfault :: Property
-prop_merge_1_entity_no_segfault =
-  gamble jSmallEntity $ \eid ->
-  gamble jColumnSchemas $ \schemas ->
-  gamble (jFactsFor eid schemas) $ \facts1 ->
-  gamble (jFactsFor eid schemas) $ \facts2 ->
-  testIO . bracket Mempool.create Mempool.free $ \pool -> withSegv (ppShow (eid, schemas, facts1, facts2)) $ do
-    (b1,cs1) <- testForeignOfFacts pool schemas facts1
-    (b2,cs2) <- testForeignOfFacts pool schemas facts2
-    let cs' = Boxed.zip cs1 cs2
-    merged <- runEitherT $ mapM (uncurry $ mergeEntityPair pool) cs'
-    -- Only checking segfault for now
-    return $ counterexample (ppShow (b1,b2))
+prop_merge_1_entity_no_segfault = property $ do
+  eid     <- forAll jSmallEntity
+  schemas <- forAll jColumnSchemas
+  facts1  <- forAll (jFactsFor eid schemas)
+  facts2  <- forAll (jFactsFor eid schemas)
+
+  result  <- liftIO $
+    bracket Mempool.create Mempool.free $ \pool -> withSegv (ppShow (eid, schemas, facts1, facts2)) $ do
+      (b1,cs1) <- testForeignOfFacts pool schemas facts1
+      (b2,cs2) <- testForeignOfFacts pool schemas facts2
+      let cs' = Boxed.zip cs1 cs2
+      merged <- runEitherT $ mapM (uncurry $ mergeEntityPair pool) cs'
+      -- Only checking segfault for now
+      return
         $ case merged of
-           Right _ -> True
-           Left _ -> False
+          Right _ -> True
+          Left _ -> False
+
+  assert result
 
 -- | Merge facts for same entity. We should get the right result
 -- This is stable - if two facts have the same entity, time and factsetId, favour the first
 prop_merge_1_entity_check_result :: Property
-prop_merge_1_entity_check_result =
-  gamble jSmallEntity $ \eid ->
-  gamble jColumnSchemas $ \schemas ->
-  gamble (jFactsFor eid schemas) $ \facts1 ->
-  gamble (jFactsFor eid schemas) $ \facts2 ->
-  testIO . bracket Mempool.create Mempool.free $ \pool -> withSegv (ppShow (eid, schemas, facts1, facts2)) $ do
-    let expect = testMergeFacts schemas (facts1 <> facts2)
-    (b1,cs1) <- testForeignOfFacts pool schemas facts1
-    (b2,cs2) <- testForeignOfFacts pool schemas facts2
-    let cs' = Boxed.zip cs1 cs2
-    let err i = firstEitherT ppShow i
-    merged <- runEitherT $ do
-      ms <- err $ mapM (uncurry $ mergeEntityPair pool) cs'
-      err $ mapM entityOfForeign ms
+prop_merge_1_entity_check_result = property $ do
+  eid     <- forAll jSmallEntity
+  schemas <- forAll jColumnSchemas
+  facts1  <- forAll (jFactsFor eid schemas)
+  facts2  <- forAll (jFactsFor eid schemas)
 
-    return $ counterexample (ppShow (b1,b2))
-           $ case merged of
-              Right m'
-                | Boxed.length cs1 == 1 && Boxed.length cs2 == 1
-                -> expect === m'
-                | otherwise
-                -> Boxed.empty === m'
-              Left  e' -> counterexample e' False
+  result  <- liftIO $
+    bracket Mempool.create Mempool.free $ \pool -> withSegv (ppShow (eid, schemas, facts1, facts2)) $ do
+      let expect = testMergeFacts schemas (facts1 <> facts2)
+      (b1,cs1) <- testForeignOfFacts pool schemas facts1
+      (b2,cs2) <- testForeignOfFacts pool schemas facts2
+      let cs' = Boxed.zip cs1 cs2
+      let err i = firstEitherT ppShow i
+      merged <- runEitherT $ do
+        ms <- err $ mapM (uncurry $ mergeEntityPair pool) cs'
+        err $ mapM entityOfForeign ms
 
+      return
+        $ case merged of
+          Right m'
+            | Boxed.length cs1 == 1 && Boxed.length cs2 == 1
+            -> expect == m'
+            | otherwise
+            -> Boxed.empty == m'
+          Left _ -> False
+
+  assert result
 
 -- | Merge two blocks from two different files (one block each)
 -- This is stable since we know upfront that all blocks will have their entities added
 -- in a particular order.
 prop_merge_1_block_2_files :: Property
-prop_merge_1_block_2_files =
-  gamble jColumnSchemas $ \schemas ->
-  gamble (jSmallFacts schemas) $ \facts1 ->
-  gamble (jSmallFacts schemas) $ \facts2 ->
-  gamble jGarbageCollectEvery $ \gcEvery ->
-  testIO . withSegv (ppShow (schemas, facts1, facts2)) $ do
+prop_merge_1_block_2_files = property $ do
+  schemas <- forAll jColumnSchemas
+  facts1  <- forAll (jSmallFacts schemas)
+  facts2  <- forAll (jSmallFacts schemas)
+  gcEvery <- forAll jGarbageCollectEvery
+
+  result  <- liftIO $
+    withSegv (ppShow (schemas, facts1, facts2)) $ do
     let expect = testMergeFacts schemas (facts1 <> facts2)
     let Right b1 = blockOfFacts (Boxed.fromList schemas) (Boxed.fromList facts1)
     let Right b2 = blockOfFacts (Boxed.fromList schemas) (Boxed.fromList facts2)
     let err i = firstEitherT ppShow i
     merged <- runEitherT $ err $ TestMerge.mergeLists gcEvery [[b1], [b2]]
 
-    return $ counterexample (ppShow (b1,b2))
-           $ case merged of
-              Right m'
-                -> Boxed.toList expect === m'
-              Left  e' -> counterexample e' False
+    return
+      $ case merged of
+          Right m'
+            -> Boxed.toList expect == m'
+          Left _ -> False
+
+  assert result
 
 -- | Merge four blocks from two different files.
 -- This should be sufficient to show it works for many files and many blocks,
@@ -235,12 +244,14 @@ prop_merge_1_block_2_files =
 -- We do this by just generating even factsetIds for the left and odd factsetIds for the right.
 -- This will still give us interesting sorting cases, but ensure no duplicates.
 prop_merge_2_block_2_files :: Property
-prop_merge_2_block_2_files =
-  gamble jColumnSchemas $ \schemas ->
-  gamble (jBlockPair evenFactsetId schemas) $ \(facts11, facts12) ->
-  gamble (jBlockPair oddFactsetId  schemas) $ \(facts21, facts22) ->
-  gamble jGarbageCollectEvery $ \gcEvery ->
-  testIO . withSegv (ppShow (schemas, (facts11,facts12), (facts21, facts22))) $ do
+prop_merge_2_block_2_files = property $ do
+  schemas             <- forAll jColumnSchemas
+  (facts11, facts12)  <- forAll (jBlockPair evenFactsetId schemas)
+  (facts21, facts22)  <- forAll (jBlockPair oddFactsetId  schemas)
+  gcEvery             <- forAll jGarbageCollectEvery
+
+  result  <- liftIO $
+    withSegv (ppShow (schemas, (facts11,facts12), (facts21, facts22))) $ do
     let mkBlock = blockOfFacts (Boxed.fromList schemas) . Boxed.fromList
     let expect = testMergeFacts schemas (facts11 <> facts12 <> facts21 <> facts22)
 
@@ -251,19 +262,21 @@ prop_merge_2_block_2_files =
     let allBlocks = [ [b11, b12], [b21, b22] ]
 
     let err i = firstEitherT ppShow i
-    merged <- runEitherT $ err $ TestMerge.mergeLists gcEvery $ allBlocks
+    merged   <- runEitherT $ err $ TestMerge.mergeLists gcEvery $ allBlocks
 
-    return $ counterexample (ppShow allBlocks)
-           $ case merged of
-              Right m'
-                -> Boxed.toList expect === m'
-              Left  e' -> counterexample e' False
+    return $
+      case merged of
+        Right m'
+          -> Boxed.toList expect == m'
+        Left _ -> False
+
+  assert result
+
  where
   evenFactsetId (FactsetId i) = FactsetId (i * 2)
   oddFactsetId (FactsetId i) = FactsetId (i * 2 + 1)
 
 
-return []
 tests :: IO Bool
-tests = $disorderCheckEnvAll TestRunNormal
-
+tests =
+  checkParallel $$(discover)

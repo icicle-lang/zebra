@@ -1,18 +1,18 @@
 [submodule "lib/p"]
 	path = lib/p
-	url = git@github.com:HuwCampbell/p
+	url = ../p
 [submodule "lib/disorder"]
 	path = lib/disorder
-	url = git@github.com:HuwCampbell/disorder.hs
+	url = ../disorder
 [submodule "lib/x"]
 	path = lib/x
-	url = git@github.com:HuwCampbell/x
+	url = ../x
 [submodule "lib/anemone"]
 	path = lib/anemone
-	url = git@github.com:HuwCampbell/anemone
+	url = ../anemone
 [submodule "lib/snapper"]
 	path = lib/snapper
-	url = git@github.com:HuwCampbell/snapper
+	url = ../snapper
 [submodule "lib/viking"]
 	path = lib/viking
-	url = git@github.com:HuwCampbell/viking
+	url = ../viking

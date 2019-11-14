@@ -6,9 +6,9 @@ import qualified Anemone.Foreign.Mempool as Mempool
 
 import           Control.Monad.Catch (bracket)
 
-import           Disorder.Core.IO (testIO)
-import           Disorder.Jack (Property)
-import           Disorder.Jack (quickCheckAll, gamble)
+import           Hedgehog
+import qualified Hedgehog.Gen as Gen
+import qualified Hedgehog.Range as Range
 
 import           P
 
