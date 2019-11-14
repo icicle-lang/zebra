@@ -1,11 +1,14 @@
-zebra
-=====
+<div align="center">
 
-```
-Column-oriented binary format for immutable datasets
-```
+# Zebra
+### Column-oriented binary format for immutable datasets
 
-<img src="https://github.com/ambiata/zebra/raw/master/doc/zebra.jpg" width="350" align="right"/>
+<img src="https://github.com/ambiata/zebra/raw/master/doc/zebra.jpg" width="350"/>
+
+[![Build Status](https://api.travis-ci.com/icicle-lang/zebra.svg?branch=master)](https://travis-ci.com/icicle-lang/zebra)
+
+</div>
+
 
 Overview
 --------
