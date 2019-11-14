@@ -152,7 +152,7 @@ prop_transmute_expand = property $ do
 
 
 prop_transmute_merge :: Property
-prop_transmute_merge = property $ do
+prop_transmute_merge = withTests 1000 . property $ do
   schema0  <- forAll jTableSchema
   schema   <- forAll (jExpandedTableSchema schema0)
   logical0 <- forAll (jSizedLogical schema0)
@@ -167,14 +167,14 @@ prop_transmute_merge = property $ do
   annotate (ppShow striped0)
   annotate (ppShow striped1)
 
-  merge1 <- discardLeft $ Striped.merge striped0 striped1
+  merge1 <- discardLeft $
+    Striped.merge striped0 striped1
 
-  tm  <- evalEither $
-    Striped.transmute schema merge1
+  t0     <- evalEither $ Striped.transmute schema striped0
+  t1     <- evalEither $ Striped.transmute schema striped1
+  tm     <- evalEither $ Striped.transmute schema merge1
 
-  mtt <- evalEither $ do
-    t0 <- Striped.transmute schema striped0
-    t1 <- Striped.transmute schema striped1
+  mtt  <- discardLeft $
     Striped.merge t0 t1
 
   tm === mtt
