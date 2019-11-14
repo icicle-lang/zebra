@@ -2,8 +2,9 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Test.Zebra.Serial.Binary.Striped where
 
-import           Disorder.Jack (Property, forAllProperties, quickCheckWithResult, maxSuccess, stdArgs)
-import           Disorder.Jack (gamble, listOfN)
+import           Hedgehog
+import qualified Hedgehog.Gen as Gen
+import qualified Hedgehog.Range as Range
 
 import           P
 
@@ -23,23 +24,23 @@ data BinaryError =
     deriving (Eq, Show)
 
 prop_roundtrip_file :: Property
-prop_roundtrip_file =
-  gamble jTableSchema $ \schema ->
-  gamble (listOfN 1 10 $ jSizedLogical1 schema) $ \logical ->
-    let
-      takeStriped x =
-        let
-          Right striped =
-            Striped.fromLogical schema x
-        in
-          striped
-    in
-      trippingBoth
-        (first BinaryEncode . withList (ByteStream.toChunks . encodeStriped))
-        (first BinaryDecode . withList (decodeStriped . ByteStream.fromChunks))
-        (fmap takeStriped logical)
+prop_roundtrip_file = withTests 1000 . property $ do
+  schema <- forAll jTableSchema
+  logical <- forAll (Gen.list (Range.linear 1 10) $ jSizedLogical1 schema)
+  let
+    takeStriped x =
+      let
+        Right striped =
+          Striped.fromLogical schema x
+      in
+        striped
 
-return []
+  trippingBoth
+    (fmap takeStriped logical)
+    (first BinaryEncode . withList (ByteStream.toChunks . encodeStriped))
+    (first BinaryDecode . withList (decodeStriped . ByteStream.fromChunks))
+
+
 tests :: IO Bool
 tests =
-  $forAllProperties $ quickCheckWithResult (stdArgs {maxSuccess = 1000})
+  checkParallel $$(discover)

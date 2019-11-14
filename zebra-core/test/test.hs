@@ -1,4 +1,4 @@
-import           Disorder.Core.Main
+import           Hedgehog.Main
 
 import qualified Test.Zebra.Factset.Block
 import qualified Test.Zebra.Factset.Data
@@ -24,11 +24,12 @@ import qualified Test.Zebra.Serial.Text.Schema
 import qualified Test.Zebra.Serial.Text.Striped
 import qualified Test.Zebra.Table.Logical
 import qualified Test.Zebra.Table.Striped
+import qualified Test.Zebra.Table.Schema
 import qualified Test.Zebra.Time
 
 main :: IO ()
 main =
-  disorderMain [
+  defaultMain [
       Test.Zebra.Factset.Block.tests
     , Test.Zebra.Factset.Data.tests
     , Test.Zebra.Foreign.Block.tests
@@ -53,5 +54,6 @@ main =
     , Test.Zebra.Serial.Text.Striped.tests
     , Test.Zebra.Table.Logical.tests
     , Test.Zebra.Table.Striped.tests
+    , Test.Zebra.Table.Schema.tests
     , Test.Zebra.Time.tests
     ]

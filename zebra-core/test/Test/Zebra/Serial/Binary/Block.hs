@@ -10,8 +10,7 @@ import qualified Data.Text as Text
 import qualified Data.Vector as Boxed
 import qualified Data.Vector.Unboxed as Unboxed
 
-import           Disorder.Jack (Property)
-import           Disorder.Jack (quickCheckAll, gamble, listOf, counterexample)
+import           Hedgehog
 
 import           P
 
@@ -35,24 +34,24 @@ import qualified Zebra.Table.Striped as Striped
 
 
 prop_roundtrip_from_facts :: Property
-prop_roundtrip_from_facts =
-  gamble jBinaryVersion $ \version ->
-  gamble jColumnSchema $ \schema ->
-  gamble (listOf $ jFact schema (AttributeId 0)) $ \facts ->
-    let
-      schemas =
-        Boxed.singleton schema
+prop_roundtrip_from_facts = property $ do
+  version <- forAll jBinaryVersion
+  schema <- forAll jColumnSchema
+  facts <- forAll (listOf $ jFact schema (AttributeId 0))
+  let
+    schemas =
+      Boxed.singleton schema
 
-      header =
-        headerOfAttributes version $ Map.singleton (AttributeName "attribute_0") schema
+    header =
+      headerOfAttributes version $ Map.singleton (AttributeName "attribute_0") schema
 
-      block =
-        either (Savage.error . show) id .
-        blockOfFacts schemas $
-        Boxed.fromList facts
-    in
-      counterexample (ppShow schema) $
-      trippingSerialE (bBlock header) (getBlock header) block
+    block =
+      either (Savage.error . show) id .
+      blockOfFacts schemas $
+      Boxed.fromList facts
+
+  annotate (ppShow schema)
+  trippingSerialE (bBlock header) (getBlock header) block
 
 prop_roundtrip_block :: Property
 prop_roundtrip_block =
@@ -95,7 +94,6 @@ unsafeTakeArray :: Schema.Table -> Schema.Column
 unsafeTakeArray =
   either (Savage.error . ppShow) snd . Schema.takeArray
 
-return []
 tests :: IO Bool
 tests =
-  $quickCheckAll
+  checkParallel $$(discover)

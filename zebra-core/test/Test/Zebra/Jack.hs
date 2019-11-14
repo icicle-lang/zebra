@@ -75,6 +75,7 @@ module Test.Zebra.Jack (
   , gamble
   , vectorOf
   , listOf
+  , sizedBounded
   ) where
 
 import           Data.ByteString (ByteString)
@@ -849,3 +850,7 @@ vectorOf = Gen.list . Range.singleton
 
 listOf :: Gen a -> Gen [a]
 listOf = Gen.list (Range.linear 0 100)
+
+sizedBounded :: (Bounded a, Integral a) => Gen a
+sizedBounded =
+  Gen.integral (Range.linear minBound maxBound)

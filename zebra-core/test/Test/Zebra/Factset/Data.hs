@@ -6,8 +6,6 @@ module Test.Zebra.Factset.Data where
 import           P
 
 import           Hedgehog
-import qualified Hedgehog.Gen as Gen
-import qualified Hedgehog.Range as Range
 
 import           System.IO (IO)
 

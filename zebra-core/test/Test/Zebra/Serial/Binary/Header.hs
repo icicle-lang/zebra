@@ -5,8 +5,8 @@ module Test.Zebra.Serial.Binary.Header where
 import           Data.Map (Map)
 import qualified Data.Map as Map
 
-import           Disorder.Jack (Property, Jack)
-import           Disorder.Jack (quickCheckAll, gamble, listOf, oneOf)
+import           Hedgehog
+import qualified Hedgehog.Gen as Gen
 
 import           P
 
@@ -34,18 +34,17 @@ prop_roundtrip_header =
   gamble jHeader $
     trippingSerial bHeader getHeader
 
-jHeader :: Jack Header
+jHeader :: Gen Header
 jHeader =
-  oneOf [
+  Gen.choice [
       HeaderV3 <$> jTableSchema
     , HeaderV2 <$> mapOf jAttributeName (fmap columnSchemaV0 jColumnSchema)
     ]
 
-mapOf :: Ord k => Jack k -> Jack v -> Jack (Map k v)
+mapOf :: Ord k => Gen k -> Gen v -> Gen (Map k v)
 mapOf k v =
   Map.fromList <$> listOf ((,) <$> k <*> v)
 
-return []
 tests :: IO Bool
 tests =
-  $quickCheckAll
+  checkParallel $$(discover)

@@ -7,9 +7,10 @@ import qualified Data.ByteString as ByteString
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text
 
-import           Disorder.Jack (Property, Jack, forAllProperties, quickCheckWithResult, maxSuccess, stdArgs)
-import           Disorder.Jack (gamble, tripping, once, arbitrary, sizedBounded)
-import           Disorder.Jack (listOf, choose, chooseChar, suchThat)
+import           Hedgehog
+import qualified Hedgehog.Gen as Gen
+import           Hedgehog.Gen.QuickCheck (arbitrary)
+import qualified Hedgehog.Range as Range
 
 import           P
 
@@ -20,60 +21,60 @@ import           Test.Zebra.Jack
 import           Zebra.Serial.Json.Util
 
 
-jText :: Jack Text
+jText :: Gen Text
 jText =
   fmap Text.pack . listOf $
-    chooseChar (minBound, maxBound)
+    Gen.unicode
 
-jBinary :: Jack ByteString
+jBinary :: Gen ByteString
 jBinary =
   fmap ByteString.pack . listOf $
-    choose (minBound, maxBound)
+    Gen.integral (Range.linear minBound maxBound)
 
 prop_roundtrip_unit :: Property
 prop_roundtrip_unit =
-  once $
-    tripping (\_ -> encodeJson [] ppUnit) (decodeJson pUnit) ()
+  withTests 1 . property $
+    tripping () (\_ -> encodeJson [] ppUnit) (decodeJson pUnit)
 
 prop_roundtrip_int :: Property
 prop_roundtrip_int =
-  gamble sizedBounded $
-    tripping (encodeJson [] . ppInt) (decodeJson pInt)
+  gamble (Gen.integral (Range.linear minBound maxBound)) $ \x ->
+    tripping x (encodeJson [] . ppInt) (decodeJson pInt)
 
 prop_roundtrip_date :: Property
 prop_roundtrip_date =
-  gamble jDate $
-    tripping (encodeJson [] . ppDate) (decodeJson pDate)
+  gamble jDate $ \x ->
+    tripping x (encodeJson [] . ppDate) (decodeJson pDate)
 
 prop_roundtrip_time :: Property
 prop_roundtrip_time =
-  gamble jTime $
-    tripping (encodeJson [] . ppTime) (decodeJson pTime)
+  gamble jTime $ \x ->
+    tripping x (encodeJson [] . ppTime) (decodeJson pTime)
 
 prop_roundtrip_double :: Property
 prop_roundtrip_double =
-  gamble arbitrary $
-    tripping (encodeJson [] . ppDouble) (decodeJson pDouble)
+  gamble arbitrary $ \x ->
+    tripping x (encodeJson [] . ppDouble) (decodeJson pDouble)
 
 prop_roundtrip_text :: Property
 prop_roundtrip_text =
-  gamble jText $
-    tripping (encodeJson [] . ppText) (decodeJson pText)
+  gamble jText $ \x ->
+    tripping x (encodeJson [] . ppText) (decodeJson pText)
 
 prop_roundtrip_binary :: Property
 prop_roundtrip_binary =
-  gamble jBinary $
-    tripping (encodeJson [] . ppBinary) (decodeJson pBinary)
+  gamble jBinary $ \x ->
+    tripping x (encodeJson [] . ppBinary) (decodeJson pBinary)
 
 -- This can be considered documentation that for all valid UTF-8 byte
 -- sequences, translating them to UTF-16 (i.e. Data.Text / Aeson) and back
 -- again results in the original sequence of bytes.
 prop_roundtrip_utf8 :: Property
 prop_roundtrip_utf8 =
-  gamble (suchThat jBinary $ isRight . Text.decodeUtf8') $
-    tripping Text.decodeUtf8 (Just . Text.encodeUtf8)
+  gamble (Gen.filter (isRight . Text.decodeUtf8') jBinary) $ \x ->
+    tripping x Text.decodeUtf8 (Just . Text.encodeUtf8)
 
-return []
+
 tests :: IO Bool
 tests =
-  $forAllProperties $ quickCheckWithResult (stdArgs {maxSuccess = 1000})
+  checkParallel $$(discover)

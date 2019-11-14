@@ -71,7 +71,7 @@ prop_entitiesOfBlock_indices =
    $ blockIndices block
 
 prop_entitiesOfBlock_tables_1_entity :: Property
-prop_entitiesOfBlock_tables_1_entity = property $ do
+prop_entitiesOfBlock_tables_1_entity = withDiscards 200 . property $ do
   schemas     <- forAll jColumnSchemas
   facts       <- forAll (jFacts schemas)
   (ehash,eid) <- forAll jEntityHashId
@@ -79,11 +79,14 @@ prop_entitiesOfBlock_tables_1_entity = property $ do
       facts'    = List.sort $ fmap fixFact facts
       block     = blockOfFacts' schemas facts'
       es        = entityValuesOfBlock' fakeBlockId block
+
   annotate "=== Block ==="
   annotate (ppShow block)
   annotate "=== Entities ==="
   annotate (ppShow es)
-  when (null facts) discard
+
+  when (null facts)
+    discard
 
   Boxed.concatMap id (getFakeTableValues es) === blockTables block
 

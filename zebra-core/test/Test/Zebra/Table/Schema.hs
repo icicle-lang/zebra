@@ -1,43 +1,41 @@
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 module Test.Zebra.Table.Schema where
 
-import           Disorder.Core.Run (ExpectedTestSpeed(..), disorderCheckEnvAll)
-import           Disorder.Jack (Property, (===), gamble, shuffle)
+import           Hedgehog
+import qualified Hedgehog.Gen as Gen
 
 import           P
 
 import           System.IO (IO)
 
-import           Test.QuickCheck (cover)
 import           Test.Zebra.Jack
 
 import qualified Zebra.Table.Schema as Schema
 
-
 prop_union_associative :: Property
-prop_union_associative =
-  gamble jTableSchema $ \table0 ->
-  gamble (jExpandedTableSchema table0) $ \table1 ->
-  gamble (jContractedTableSchema table0) $ \table2 ->
-  gamble (shuffle [table0, table1, table2]) $ \[x, y, z] ->
-    let
-      x_yz =
-        first (const ())
-          (Schema.union x =<< Schema.union y z)
+prop_union_associative = property $ do
+  table0    <- forAll jTableSchema
+  table1    <- forAll (jExpandedTableSchema table0)
+  table2    <- forAll (jContractedTableSchema table0)
+  [x, y, z] <- forAll (Gen.shuffle [table0, table1, table2])
+  let
+    x_yz =
+      first (const ())
+        (Schema.union x =<< Schema.union y z)
 
-      xy_z =
-        first (const ())
-          (Schema.union x y >>= \xy -> Schema.union xy z)
+    xy_z =
+      first (const ())
+        (Schema.union x y >>= \xy -> Schema.union xy z)
 
-      compatible =
-        isRight x_yz && isRight xy_z
-    in
-      -- Check that >90% of test cases are unions on compatible schemas
-      cover compatible 90 "compatible schemas" $
-        x_yz === xy_z
+    compatible =
+      isRight x_yz && isRight xy_z
 
-return []
+  cover 90 "compatible schemas" compatible
+
+  x_yz === xy_z
+
 tests :: IO Bool
 tests =
-  $disorderCheck
+  checkParallel $$(discover)

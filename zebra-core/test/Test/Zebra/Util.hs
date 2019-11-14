@@ -11,6 +11,7 @@ module Test.Zebra.Util (
   ) where
 
 import           Control.Monad.Trans.Class (lift)
+import           Control.Monad.IO.Class (MonadIO (..))
 
 import           Data.Binary.Get (Get, ByteOffset)
 import qualified Data.Binary.Get as Get
@@ -20,8 +21,8 @@ import qualified Data.ByteString.Lazy as Lazy
 import           Data.String (String)
 import           Data.Void (Void)
 
-import           Disorder.Jack (Property, property, counterexample)
-import           Disorder.Jack.Property.Diff (renderDiffs)
+import           Hedgehog (PropertyT, MonadTest, annotate)
+import           Hedgehog.Internal.Property (failDiff)
 
 import           Text.Show.Pretty (ppShow)
 import qualified Text.Show.Pretty as Pretty
@@ -49,10 +50,12 @@ trippingIO ::
   => Show a
   => Show x
   => Show y
+  => MonadTest m
+  => MonadIO m
   => (a -> EitherT x IO b)
   -> (b -> EitherT y IO a)
   -> a
-  -> IO Property
+  -> m ()
 trippingIO =
   trippingByIO id
 
@@ -63,20 +66,23 @@ trippingByIO ::
   => Show c
   => Show x
   => Show y
+  => MonadTest m
+  => MonadIO m
   => (a -> c)
   -> (a -> EitherT x IO b)
   -> (b -> EitherT y IO a)
   -> a
-  -> IO Property
+  -> m ()
 trippingByIO select to from a = do
   roundtrip <-
-    runEitherT $ do
+    liftIO . runEitherT $ do
       b <- firstT EncodeError $ to a
       firstT DecodeError $ from b
-  pure $ diff (pure $ select a) (fmap select roundtrip)
+
+  diff (pure $ select a) (fmap select roundtrip)
 
 
-trippingSerial :: forall a. (Eq a, Show a) => (a -> Builder) -> Get a -> a -> Property
+trippingSerial :: forall a. (Eq a, Show a) => (a -> Builder) -> Get a -> a -> PropertyT IO ()
 trippingSerial build0 get a =
   let
     build :: a -> Either () Builder
@@ -85,7 +91,7 @@ trippingSerial build0 get a =
   in
     trippingSerialE build get a
 
-trippingSerialE :: (Eq a, Show a, Show x) => (a -> Either x Builder) -> Get a -> a -> Property
+trippingSerialE :: (Eq a, Show a, Show x) => (a -> Either x Builder) -> Get a -> a -> PropertyT IO ()
 trippingSerialE build get a =
   let
     roundtrip = do
@@ -94,8 +100,8 @@ trippingSerialE build get a =
   in
     diff (pure a) roundtrip
 
-diff :: (Eq x, Eq a, Show x, Show a) => Either x a -> Either x a -> Property
-diff original roundtrip =
+diff :: (Eq x, Eq a, Show x, Show a, MonadTest m) => Either x a -> Either x a -> m ()
+diff original roundtrip = do
   let
     comparison =
       "=== Original ===" <>
@@ -107,15 +113,17 @@ diff original roundtrip =
     pdiff = do
       o <- Pretty.reify original
       r <- Pretty.reify roundtrip
-      pure $
-        "=== - Original / + Roundtrip ===" <>
-        "\n" <> renderDiffs o r
-  in
-    counterexample "" .
-    counterexample "Roundtrip failed." .
-    counterexample "" .
-    counterexample (fromMaybe comparison pdiff) $
-      property (roundtrip == original)
+
+      pure $ do
+        annotate $ "=== - Original / + Roundtrip ==="
+        failDiff o r
+
+  unless (roundtrip == original) $ do
+    annotate ""
+    annotate "Roundtrip failed."
+    annotate ""
+    fromMaybe (annotate comparison) pdiff
+
 
 runGetEither :: Get a -> Lazy.ByteString -> Either (Lazy.ByteString, ByteOffset, String) a
 runGetEither g =

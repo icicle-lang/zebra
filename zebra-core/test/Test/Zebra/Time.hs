@@ -5,7 +5,7 @@ module Test.Zebra.Time where
 import qualified Data.ByteString.Char8 as Char8
 import qualified Data.Time as Time
 
-import           Disorder.Jack
+import           Hedgehog
 
 import           P
 
@@ -18,23 +18,23 @@ import           Zebra.Time
 
 prop_roundtrip_date_render :: Property
 prop_roundtrip_date_render =
-  gamble jDate $
-    tripping renderDate parseDate
+  gamble jDate $ \x ->
+    tripping x renderDate parseDate
 
 prop_roundtrip_date_days :: Property
 prop_roundtrip_date_days =
-  gamble jDate $
-    tripping toDays fromDays
+  gamble jDate $ \x ->
+    tripping x toDays fromDays
 
 prop_roundtrip_date_calendar :: Property
 prop_roundtrip_date_calendar =
-  gamble jDate $
-    tripping toCalendarDate fromCalendarDate
+  gamble jDate $ \x ->
+    tripping x toCalendarDate fromCalendarDate
 
 prop_roundtrip_time_render :: Property
 prop_roundtrip_time_render =
-  gamble jTime $
-    tripping renderTime parseTime
+  gamble jTime $ \x ->
+    tripping x renderTime parseTime
 
 prop_roundtrip_time_seconds :: Property
 prop_roundtrip_time_seconds =
@@ -43,7 +43,7 @@ prop_roundtrip_time_seconds =
     Right time =
       fromSeconds (toSeconds time0)
   in
-    tripping toSeconds fromSeconds time
+    tripping time toSeconds fromSeconds
 
 prop_roundtrip_time_milliseconds :: Property
 prop_roundtrip_time_milliseconds =
@@ -52,22 +52,22 @@ prop_roundtrip_time_milliseconds =
     Right time =
       fromMilliseconds (toMilliseconds time0)
   in
-    tripping toMilliseconds fromMilliseconds time
+    tripping time toMilliseconds fromMilliseconds
 
 prop_roundtrip_time_microseconds :: Property
 prop_roundtrip_time_microseconds =
-  gamble jTime $
-    tripping toMicroseconds fromMicroseconds
+  gamble jTime $ \x ->
+    tripping x toMicroseconds fromMicroseconds
 
 prop_roundtrip_time_calendar :: Property
 prop_roundtrip_time_calendar =
-  gamble jTime $
-    tripping toCalendarTime fromCalendarTime
+  gamble jTime $ \x ->
+    tripping x toCalendarTime fromCalendarTime
 
 prop_roundtrip_time_of_day_microsecond :: Property
 prop_roundtrip_time_of_day_microsecond =
-  gamble jTimeOfDay $
-    tripping fromTimeOfDay (Just . toTimeOfDay)
+  gamble jTimeOfDay $ \x ->
+    tripping x fromTimeOfDay (Just . toTimeOfDay)
 
 epoch :: Time.UTCTime
 epoch =
@@ -75,7 +75,7 @@ epoch =
 
 prop_compare_date_parsing :: Property
 prop_compare_date_parsing =
-  gamble jDate $ \date ->
+  gamble jDate $ \date -> do
     let
       str =
         renderDate date
@@ -94,15 +94,15 @@ prop_compare_date_parsing =
         fmap toModifiedJulianDay .
         rightToMaybe $
         parseDate str
-   in
-     counterexample ("render =  " <> Char8.unpack str) $
-     counterexample ("theirs =  " <> show theirs) $
-     counterexample ("ours   =  " <> show ours) $
-       theirs_days === ours
+
+    annotate ("render =  " <> Char8.unpack str)
+    annotate ("theirs =  " <> show theirs)
+    annotate ("ours   =  " <> show ours)
+    theirs_days === ours
 
 prop_compare_time_parsing :: Property
 prop_compare_time_parsing =
-  gamble jTime $ \time ->
+  gamble jTime $ \time -> do
     let
       str =
         renderTime time
@@ -123,13 +123,13 @@ prop_compare_time_parsing =
         fmap toMicroseconds .
         rightToMaybe $
         parseTime str
-   in
-     counterexample ("render =  " <> Char8.unpack str) $
-     counterexample ("theirs =  " <> show theirs) $
-     counterexample ("ours   =  " <> show ours) $
-       theirs_us === ours
 
-return []
+    annotate ("render =  " <> Char8.unpack str)
+    annotate ("theirs =  " <> show theirs)
+    annotate ("ours   =  " <> show ours)
+    theirs_us === ours
+
+
 tests :: IO Bool
 tests =
-  $quickCheckAll
+  checkParallel $$(discover)

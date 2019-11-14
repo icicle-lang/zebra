@@ -11,8 +11,6 @@ import qualified Data.Text as Text
 import qualified Data.Vector as Boxed
 
 import           Hedgehog
-import qualified Hedgehog.Gen as Gen
-import qualified Hedgehog.Range as Range
 
 import           P
 

@@ -163,8 +163,8 @@ prop_merge_1_entity_no_segfault = property $ do
 
   result  <- liftIO $
     bracket Mempool.create Mempool.free $ \pool -> withSegv (ppShow (eid, schemas, facts1, facts2)) $ do
-      (b1,cs1) <- testForeignOfFacts pool schemas facts1
-      (b2,cs2) <- testForeignOfFacts pool schemas facts2
+      (_b1,cs1) <- testForeignOfFacts pool schemas facts1
+      (_b2,cs2) <- testForeignOfFacts pool schemas facts2
       let cs' = Boxed.zip cs1 cs2
       merged <- runEitherT $ mapM (uncurry $ mergeEntityPair pool) cs'
       -- Only checking segfault for now
@@ -187,11 +187,11 @@ prop_merge_1_entity_check_result = property $ do
   result  <- liftIO $
     bracket Mempool.create Mempool.free $ \pool -> withSegv (ppShow (eid, schemas, facts1, facts2)) $ do
       let expect = testMergeFacts schemas (facts1 <> facts2)
-      (b1,cs1) <- testForeignOfFacts pool schemas facts1
-      (b2,cs2) <- testForeignOfFacts pool schemas facts2
-      let cs' = Boxed.zip cs1 cs2
+      (_b1,cs1) <- testForeignOfFacts pool schemas facts1
+      (_b2,cs2) <- testForeignOfFacts pool schemas facts2
+      let cs'   = Boxed.zip cs1 cs2
       let err i = firstEitherT ppShow i
-      merged <- runEitherT $ do
+      merged   <- runEitherT $ do
         ms <- err $ mapM (uncurry $ mergeEntityPair pool) cs'
         err $ mapM entityOfForeign ms
 

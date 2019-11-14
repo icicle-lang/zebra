@@ -2,9 +2,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Test.Zebra.Table.Logical where
 
-import           Disorder.Core.Run  (disorderCheckAll)
-import           Disorder.Jack (Property)
-import           Disorder.Jack ((===), (==>), gamble)
+
+import           Hedgehog
 
 import qualified Data.Vector as Boxed
 
@@ -18,44 +17,48 @@ import           Zebra.Table.Logical
 
 
 prop_reversed :: Property
-prop_reversed =
-  gamble jColumnSchema $ \schema ->
-  gamble (jLogicalValue schema) $ \x ->
-  gamble (jLogicalValue schema) $ \y ->
-    compare x y
-    ===
+prop_reversed = property $ do
+  schema <- forAll jColumnSchema
+  x <- forAll (jLogicalValue schema)
+  y <- forAll (jLogicalValue schema)
+
+  compare x y ===
     compare (Reversed y) (Reversed x)
 
 prop_nested :: Property
-prop_nested =
-  gamble jColumnSchema $ \schema ->
-  gamble (jLogicalValue schema) $ \x ->
-  gamble (jLogicalValue schema) $ \y ->
-    compare x y
-    ===
+prop_nested = property $ do
+  schema <- forAll jColumnSchema
+  x <- forAll (jLogicalValue schema)
+  y <- forAll (jLogicalValue schema)
+
+  compare x y ===
     compare (Nested (Array (Boxed.singleton x))) (Nested (Array (Boxed.singleton y)))
 
 prop_ord_0 :: Property
-prop_ord_0 =
-  gamble jColumnSchema $ \schema ->
-  gamble (jLogicalValue schema) $ \x ->
-  gamble (jLogicalValue schema) $ \y ->
-  gamble (jLogicalValue schema) $ \z ->
-    x > y && y > z
-    ==>
+prop_ord_0 = withDiscards 1000 . property $ do
+  schema <- forAll jColumnSchema
+  x <- forAll (jLogicalValue schema)
+  y <- forAll (jLogicalValue schema)
+  z <- forAll (jLogicalValue schema)
+
+  unless (x > y && y > z)
+    discard
+
+  assert $
     x > z
 
 prop_ord_1 :: Property
-prop_ord_1 =
-  gamble jColumnSchema $ \schema ->
-  gamble (jLogicalValue schema) $ \x ->
-  gamble (jLogicalValue schema) $ \y ->
-  gamble (jLogicalValue schema) $ \z ->
-    x < y && y < z
-    ==>
+prop_ord_1 = withDiscards 1000 . property $ do
+  schema <- forAll jColumnSchema
+  x <- forAll (jLogicalValue schema)
+  y <- forAll (jLogicalValue schema)
+  z <- forAll (jLogicalValue schema)
+
+  unless (x < y && y < z)
+    discard
+  assert $
     x < z
 
-return []
 tests :: IO Bool
 tests =
-  $disorderCheckAll
+  checkParallel $$(discover)

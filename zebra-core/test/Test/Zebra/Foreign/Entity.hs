@@ -4,11 +4,10 @@ module Test.Zebra.Foreign.Entity where
 
 import qualified Anemone.Foreign.Mempool as Mempool
 
-import           Control.Monad.Catch (bracket)
+import           Control.Monad.Trans.Resource (allocate, runResourceT)
+import           Control.Monad.Morph (hoist)
 
 import           Hedgehog
-import qualified Hedgehog.Gen as Gen
-import qualified Hedgehog.Range as Range
 
 import           P
 
@@ -23,10 +22,11 @@ import           Zebra.Foreign.Entity
 prop_roundtrip_entity :: Property
 prop_roundtrip_entity =
   gamble jEntity $ \entity ->
-  testIO . bracket Mempool.create Mempool.free $ \pool ->
-    trippingIO (liftE . foreignOfEntity pool) entityOfForeign entity
+    hoist runResourceT $ do
+      (_, pool) <- allocate Mempool.create Mempool.free
+      trippingIO (liftE . foreignOfEntity pool) entityOfForeign entity
 
-return []
+
 tests :: IO Bool
 tests =
-  $quickCheckAll
+  checkParallel $$(discover)

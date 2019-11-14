@@ -178,12 +178,6 @@ test-suite test
   build-depends:
                       base
                     , ambiata-anemone
-                    , ambiata-disorder-core
-                    , ambiata-disorder-corpus
-                    , ambiata-disorder-jack
-                    , hedgehog                    >= 1.0
-                    , hedgehog-corpus
-                    , hedgehog-quickcheck
                     , ambiata-p
                     , ambiata-viking
                     , ambiata-x-vector
@@ -192,9 +186,13 @@ test-suite test
                     , bytestring
                     , containers
                     , exceptions
+                    , hedgehog                    >= 1.0
+                    , hedgehog-corpus
+                    , hedgehog-quickcheck
+                    , mmorph
                     , pretty-show
-                    , QuickCheck
                     , quickcheck-instances
+                    , resourcet
                     , semigroups
                     , text
                     , thyme
@@ -228,5 +226,6 @@ test-suite test
                       Test.Zebra.Serial.Text.Striped
                       Test.Zebra.Table.Logical
                       Test.Zebra.Table.Striped
+                      Test.Zebra.Table.Schema
                       Test.Zebra.Time
                       Test.Zebra.Util

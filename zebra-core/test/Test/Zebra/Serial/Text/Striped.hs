@@ -2,8 +2,10 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Test.Zebra.Serial.Text.Striped where
 
-import           Disorder.Jack (Property, forAllProperties, quickCheckWithResult, maxSuccess, stdArgs)
-import           Disorder.Jack (gamble, listOfN)
+
+import           Hedgehog
+import qualified Hedgehog.Gen as Gen
+import qualified Hedgehog.Range as Range
 
 import           P
 
@@ -23,36 +25,37 @@ data TextError =
     deriving (Eq, Show)
 
 prop_roundtrip_table :: Property
-prop_roundtrip_table =
-  gamble jTableSchema $ \schema ->
-  gamble (jSizedLogical schema) $ \logical ->
-    let
-      Right striped =
-        Striped.fromLogical schema logical
-    in
-      trippingBoth
-        (first TextEncode . encodeStripedBlock)
-        (first TextDecode . decodeStripedBlock schema)
-        striped
+prop_roundtrip_table = property $ do
+  schema   <- forAll jTableSchema
+  logical  <- forAll (jSizedLogical schema)
+  let
+    Right striped =
+      Striped.fromLogical schema logical
+
+  trippingBoth
+    striped
+    (first TextEncode . encodeStripedBlock)
+    (first TextDecode . decodeStripedBlock schema)
 
 prop_roundtrip_file :: Property
-prop_roundtrip_file =
-  gamble jTableSchema $ \schema ->
-  gamble (listOfN 1 10 $ jSizedLogical1 schema) $ \logical ->
-    let
-      takeStriped x =
-        let
-          Right striped =
-            Striped.fromLogical schema x
-        in
-          striped
-    in
-      trippingBoth
-        (first TextEncode . withList (ByteStream.toChunks . encodeStriped))
-        (first TextDecode . withList (decodeStriped schema . ByteStream.fromChunks))
-        (fmap takeStriped logical)
+prop_roundtrip_file = property $ do
+  schema   <- forAll jTableSchema
+  logical  <- forAll (Gen.list (Range.linear 1 10) $ jSizedLogical1 schema)
 
-return []
+  let
+    takeStriped x =
+      let
+        Right striped =
+          Striped.fromLogical schema x
+      in
+        striped
+
+  trippingBoth
+    (fmap takeStriped logical)
+    (first TextEncode . withList (ByteStream.toChunks . encodeStriped))
+    (first TextDecode . withList (decodeStriped schema . ByteStream.fromChunks))
+
+
 tests :: IO Bool
 tests =
-  $forAllProperties $ quickCheckWithResult (stdArgs {maxSuccess = 1000})
+  checkParallel $$(discover)

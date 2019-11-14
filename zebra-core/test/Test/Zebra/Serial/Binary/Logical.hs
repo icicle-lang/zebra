@@ -2,8 +2,9 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Test.Zebra.Serial.Binary.Logical where
 
-import           Disorder.Jack (Property, forAllProperties, quickCheckWithResult, maxSuccess, stdArgs)
-import           Disorder.Jack (gamble, listOfN)
+import           Hedgehog
+import qualified Hedgehog.Gen as Gen
+import qualified Hedgehog.Range as Range
 
 import           P
 
@@ -23,15 +24,15 @@ data BinaryError =
     deriving (Eq, Show)
 
 prop_roundtrip_file :: Property
-prop_roundtrip_file =
-  gamble jTableSchema $ \schema ->
-  gamble (listOfN 1 10 $ jSizedLogical1 schema) $ \logical ->
-    trippingBoth
-      (first BinaryEncode . withList (ByteStream.toChunks . encodeLogical schema))
-      (first BinaryDecode . withList (Stream.effect . fmap snd . decodeLogical . ByteStream.fromChunks))
-      logical
+prop_roundtrip_file = property $ do
+  schema  <- forAll jTableSchema
+  logical <- forAll (Gen.list (Range.linear 1 10) $ jSizedLogical1 schema)
+  trippingBoth
+    logical
+    (first BinaryEncode . withList (ByteStream.toChunks . encodeLogical schema))
+    (first BinaryDecode . withList (Stream.effect . fmap snd . decodeLogical . ByteStream.fromChunks))
 
-return []
+
 tests :: IO Bool
 tests =
-  $forAllProperties $ quickCheckWithResult (stdArgs {maxSuccess = 1000})
+  checkParallel $$(discover)

@@ -10,7 +10,6 @@ import qualified Data.Map as Map
 
 import           Hedgehog
 import qualified Hedgehog.Gen as Gen
-import           Hedgehog.Gen.QuickCheck (arbitrary)
 import qualified Hedgehog.Range as Range
 
 import           P

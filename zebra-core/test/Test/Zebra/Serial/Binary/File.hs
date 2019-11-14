@@ -10,8 +10,10 @@ import qualified Data.Binary.Get as Get
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 
-import           Disorder.Jack
-import           Disorder.Core.Run
+import           Hedgehog
+import qualified Hedgehog.Gen as Gen
+import           Hedgehog.Gen.QuickCheck
+import qualified Hedgehog.Range as Range
 
 import           P
 
@@ -19,6 +21,7 @@ import           System.IO (IO)
 
 import           Test.QuickCheck.Instances ()
 import           Test.Zebra.Util
+import           Test.Zebra.Jack
 
 import           Control.Monad.Trans.Either
 import qualified X.Data.Vector as Boxed
@@ -28,28 +31,28 @@ import           Zebra.Serial.Binary.Array
 import           Zebra.Serial.Binary.File
 
 
-jSplits :: Jack (Boxed.Vector B.ByteString)
+jSplits :: Gen (Boxed.Vector B.ByteString)
 jSplits = arbitrary
 
-checkDecodeGetAll :: (Show a, Eq a) => Get.Get a -> Stream.Stream Stream.Id B.ByteString -> Property
-checkDecodeGetAll get bss =
+checkDecodeGetAll :: (MonadTest m, Show a, Eq a) => Get.Get a -> Stream.Stream Stream.Id B.ByteString -> m ()
+checkDecodeGetAll get bss = do
   let
     bs = fold $ Stream.listOfStream bss
     one = runGetEitherConsumeAll (many get) (BL.fromStrict bs)
     alls = Stream.unId $ runEitherT $ Stream.listOfStreamM $ decodeGetAll get $ Stream.trans lift bss
-  in
-    counterexample (show alls) $
-    first (const ()) one === first (const ()) alls
 
-checkDecodeGetOne :: (Show a, Eq a) => Get.Get a -> Stream.Stream Stream.Id B.ByteString -> Property
-checkDecodeGetOne get bss =
+  annotate (show alls)
+  first (const ()) one === first (const ()) alls
+
+checkDecodeGetOne :: (MonadTest m, Show a, Eq a) => Get.Get a -> Stream.Stream Stream.Id B.ByteString -> m ()
+checkDecodeGetOne get bss = do
   let
     bs = fold $ Stream.listOfStream bss
     expect = getExpect $ Get.runGetOrFail get (BL.fromStrict bs)
     actual = getActual $ Stream.unId $ runEitherT $ decodeGetOne get $ Stream.trans lift bss
-  in
-    counterexample (show actual) $
-    first (const ()) expect === first (const ()) actual
+
+  annotate (show actual)
+  first (const ()) expect === first (const ()) actual
 
 getExpect ::
      Either x (BL.ByteString, o, a)
@@ -93,17 +96,19 @@ prop_runStreamOne_getIntArray_prefix_size =
     getIntArray (fromIntegral i)
 
 prop_runStreamOne_getIntArray_static_size :: Property
-prop_runStreamOne_getIntArray_static_size =
-  gamble jSplits $ \bss ->
-  gamble arbitrary $ \num ->
-    checkDecodeGetOne (getIntArray $ abs num) (Stream.streamOfVector bss)
+prop_runStreamOne_getIntArray_static_size =  property $ do
+  bss <- forAll jSplits
+  num <- forAll arbitrary
+
+  checkDecodeGetOne (getIntArray $ abs num) (Stream.streamOfVector bss)
 
 -- Adding a filter makes sure there are "Skips" in the stream
 prop_runStreamOne_getStrings_filtered :: Property
-prop_runStreamOne_getStrings_filtered =
-  gamble jSplits $ \bss ->
-  gamble (chooseInt (0,100)) $ \num ->
-    checkDecodeGetOne (getStrings num) (Stream.filter (\b -> B.length b `mod` 2 == 0) $ Stream.streamOfVector bss)
+prop_runStreamOne_getStrings_filtered =  property $ do
+  bss <- forAll jSplits
+  num <- forAll (Gen.integral (Range.linear 0 100))
+
+  checkDecodeGetOne (getStrings num) (Stream.filter (\b -> B.length b `mod` 2 == 0) $ Stream.streamOfVector bss)
 
 prop_runStreamMany_getWord64be :: Property
 prop_runStreamMany_getWord64be =
@@ -132,19 +137,21 @@ prop_runStreamMany_getIntArray_prefix_size =
     getIntArray (fromIntegral i)
 
 prop_runStreamMany_getIntArray_static_size :: Property
-prop_runStreamMany_getIntArray_static_size =
-  gamble jSplits $ \bss ->
-  gamble arbitrary $ \num ->
-    checkDecodeGetAll (getIntArray $ abs num) (Stream.streamOfVector bss)
+prop_runStreamMany_getIntArray_static_size = property $ do
+  bss <- forAll jSplits
+  num <- forAll arbitrary
+
+  checkDecodeGetAll (getIntArray $ abs num) (Stream.streamOfVector bss)
 
 -- Adding a filter makes sure there are "Skips" in the stream
 prop_runStreamMany_getStrings_filtered :: Property
-prop_runStreamMany_getStrings_filtered =
-  gamble jSplits $ \bss ->
-  gamble (chooseInt (0,100)) $ \num ->
-    checkDecodeGetAll (getStrings num) (Stream.filter (\b -> B.length b `mod` 2 == 0) $ Stream.streamOfVector bss)
+prop_runStreamMany_getStrings_filtered = property $ do
+  bss <- forAll jSplits
+  num <- forAll (Gen.integral (Range.linear 0 100))
 
-return []
+  checkDecodeGetAll (getStrings num) (Stream.filter (\b -> B.length b `mod` 2 == 0) $ Stream.streamOfVector bss)
+
+
 tests :: IO Bool
 tests =
-  $disorderCheckEnvAll TestRunNormal
+  checkParallel $$(discover)

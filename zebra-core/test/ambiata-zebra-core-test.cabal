@@ -21,9 +21,6 @@ library
   build-depends:
                       base                            >= 3          && < 5
                     , ambiata-anemone
-                    , ambiata-disorder-core
-                    , ambiata-disorder-corpus
-                    , ambiata-disorder-jack
                     , ambiata-p
                     , ambiata-viking
                     , ambiata-x-vector
@@ -32,8 +29,10 @@ library
                     , bytestring
                     , containers
                     , exceptions
+                    , hedgehog                    >= 1.0
+                    , hedgehog-corpus
+                    , hedgehog-quickcheck
                     , pretty-show
-                    , QuickCheck
                     , quickcheck-instances
                     , text
                     , thyme

@@ -2,8 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Test.Zebra.Serial.Binary.Table where
 
-import           Disorder.Jack (Property)
-import           Disorder.Jack (quickCheckAll, gamble)
+import           Hedgehog
 
 import           P
 
@@ -17,18 +16,19 @@ import qualified Zebra.Table.Striped as Striped
 
 
 prop_roundtrip_table :: Property
-prop_roundtrip_table =
-  gamble jBinaryVersion $ \version ->
-  gamble (jStriped 1) $ \table ->
-    trippingSerialE (bTable version) (getTable version 1 $ Striped.schema table) table
+prop_roundtrip_table = property $ do
+  version <- forAll jBinaryVersion
+  table   <- forAll (jStriped 1)
+  trippingSerialE (bTable version) (getTable version 1 $ Striped.schema table) table
 
 prop_roundtrip_column :: Property
-prop_roundtrip_column =
-  gamble jBinaryVersion $ \version ->
-  gamble (jStripedColumn 1) $ \column ->
-    trippingSerialE (bColumn version) (getColumn version 1 $ Striped.schemaColumn column) column
+prop_roundtrip_column = property $ do
+  version <- forAll jBinaryVersion
+  column  <- forAll (jStripedColumn 1)
 
-return []
+  trippingSerialE (bColumn version) (getColumn version 1 $ Striped.schemaColumn column) column
+
+
 tests :: IO Bool
 tests =
-  $quickCheckAll
+  checkParallel $$(discover)

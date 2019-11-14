@@ -2,8 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Test.Zebra.Serial.Json.Striped where
 
-import           Disorder.Jack (Property, forAllProperties, quickCheckWithResult, maxSuccess, stdArgs)
-import           Disorder.Jack (gamble)
+import           Hedgehog
 
 import           P
 
@@ -21,19 +20,18 @@ data JsonError =
     deriving (Eq, Show)
 
 prop_roundtrip_table :: Property
-prop_roundtrip_table =
-  gamble jTableSchema $ \schema ->
-  gamble (jSizedLogical schema) $ \logical ->
-    let
-      Right striped =
-        Striped.fromLogical schema logical
-    in
-      trippingBoth
-        (first JsonEncode . encodeStriped)
-        (first JsonDecode . decodeStriped schema)
-        striped
+prop_roundtrip_table = property $ do
+  schema  <- forAll jTableSchema
+  logical <- forAll (jSizedLogical schema)
+  let
+    Right striped =
+      Striped.fromLogical schema logical
 
-return []
+  trippingBoth
+    striped
+    (first JsonEncode . encodeStriped)
+    (first JsonDecode . decodeStriped schema)
+
 tests :: IO Bool
 tests =
-  $forAllProperties $ quickCheckWithResult (stdArgs {maxSuccess = 1000})
+  checkParallel $$(discover)
