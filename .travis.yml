@@ -109,9 +109,9 @@ script:
   # - export ZEBRA="cabal v2-run --enable-tests --enable-benchmarks --verbose=0 zebra --"
   # - ${CABAL} test $WITHCOMPILER --enable-tests --enable-benchmarks zebra-cli  | color_cabal_output
   # cabal check...
-  - (cd ${PKGDIR_ambiata_zebra_cli} && ${CABAL} -vnormal check)
-  - (cd ${PKGDIR_ambiata_zebra_core} && ${CABAL} -vnormal check)
-  - (cd ${PKGDIR_ambiata_zebra_core_test} && ${CABAL} -vnormal check)
+  - (cd zebra-cli && ${CABAL} -vnormal check)
+  - (cd zebra-core && ${CABAL} -vnormal check)
+  - (cd zebra-core/test && ${CABAL} -vnormal check)
 
 # REGENDATA ("0.7.20191106",["cabal.project"])
 # EOF
