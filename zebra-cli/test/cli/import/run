@@ -1,6 +1,6 @@
 #!/bin/sh
 : ${UPDATE:=0}
-: ${ZEBRA:=$PWD/dist/build/zebra/zebra}
+: ${ZEBRA:=cabal v2-run --verbose=0 zebra --}
 
 if hash colordiff 2>/dev/null; then
   diff=colordiff
