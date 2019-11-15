@@ -104,6 +104,8 @@ script:
   - ${CABAL} build $WITHCOMPILER --enable-tests --enable-benchmarks --dep -j2 all | color_cabal_output
   # Testing...
   - ${CABAL} test $WITHCOMPILER --enable-tests --enable-benchmarks zebra-core | color_cabal_output
+  # Export zebra executable to run.
+  - export ZEBRA="cabal v2-run --enable-tests --enable-benchmarks --verbose=0 zebra --"
   - ${CABAL} test $WITHCOMPILER --enable-tests --enable-benchmarks zebra-cli  | color_cabal_output
   # cabal check...
   - (cd ${PKGDIR_ambiata_zebra_cli} && ${CABAL} -vnormal check)
