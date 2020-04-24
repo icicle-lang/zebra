@@ -36,7 +36,7 @@ import qualified Viking.ByteStream as ByteStream
 import qualified X.Data.Vector.Cons as Cons
 
 import           Zebra.Command.Util
-import           Zebra.Merge.Table (UnionTableError)
+import           Zebra.Merge.Table (UnionTableError, MergeRowsPerBlock(..))
 import qualified Zebra.Merge.Table as Merge
 import           Zebra.Serial.Binary (BinaryStripedEncodeError, BinaryStripedDecodeError)
 import           Zebra.Serial.Binary (BinaryVersion(..))
@@ -56,11 +56,6 @@ data Merge =
     , mergeVersion :: !BinaryVersion
     , mergeRowsPerChunk :: !MergeRowsPerBlock
     , mergeMaximumRowSize :: !(Maybe MergeMaximumRowSize)
-    } deriving (Eq, Ord, Show)
-
-newtype MergeRowsPerBlock =
-  MergeRowsPerBlock {
-      unMergeRowsPerBlock :: Int
     } deriving (Eq, Ord, Show)
 
 newtype MergeMaximumRowSize =
@@ -127,8 +122,6 @@ zebraMerge x = do
       writeFileOrStdout (mergeOutput x) .
     hoist (firstJoin MergeBinaryStripedEncodeError) .
       Binary.encodeStripedWith (mergeVersion x) .
-    hoist (firstJoin MergeStripedError) .
-      Striped.rechunk (unMergeRowsPerBlock $ mergeRowsPerChunk x) .
     hoist (firstJoin MergeUnionTableError) $
-      union msize inputs
+      union msize (mergeRowsPerChunk x) inputs
 {-# SPECIALIZE zebraMerge :: Merge -> EitherT MergeError (ResourceT IO) () #-}
