@@ -15,9 +15,12 @@ module Zebra.Merge.Table (
   , unionStripedWith
   ) where
 
+import           Control.Concurrent.Async
+
 import           Control.Monad.Morph (hoist, squash)
 import           Control.Monad.Trans.Class (lift)
 import           Control.Monad.Trans.Either (EitherT, newEitherT, runEitherT, hoistEither, left)
+import           Zebra.X.Either (firstJoin)
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Vector as Boxed
@@ -38,6 +41,7 @@ import qualified Zebra.Table.Schema as Schema
 import           Zebra.Table.Striped (StripedError)
 import qualified Zebra.Table.Striped as Striped
 
+import           System.IO
 
 newtype MaximumRowSize =
   MaximumRowSize {
@@ -98,29 +102,28 @@ peekHead input = do
 {-# INLINABLE peekHead #-}
 
 streamStripedAsRows ::
-     Monad m
-  => Int
-  -> Stream (Of Striped.Table) m ()
-  -> Stream (Of Row) (EitherT UnionTableError m) ()
+     Int
+  -> Stream (Of Striped.Table) (EitherT UnionTableError IO) ()
+  -> Stream (Of Row) (EitherT UnionTableError IO) ()
 streamStripedAsRows _num stream =
   Stream.map (uncurry Row) $
     Stream.concat $
     Stream.mapM (hoistEither . logicalPairs) $
-    hoist lift
       stream
 {-# INLINABLE streamStripedAsRows #-}
 
 mergeStreams ::
-     Monad m
-  => Stream (Of Row) (EitherT UnionTableError m) ()
-  -> Stream (Of Row) (EitherT UnionTableError m) ()
-  -> Stream (Of Row) (EitherT UnionTableError m) ()
+     Stream (Of Row) (EitherT UnionTableError IO) ()
+  -> Stream (Of Row) (EitherT UnionTableError IO) ()
+  -> Stream (Of Row) (EitherT UnionTableError IO) ()
 mergeStreams leftStream rightStream = Effect . newEitherT $ do
-  left0  <- runEitherT $ Stream.next leftStream
-  right0 <- runEitherT $ Stream.next rightStream
+  (left0, right0) <-
+    concurrently
+      (runEitherT $ Stream.next leftStream)
+      (runEitherT $ Stream.next rightStream)
 
   return $ do
-    left1 <- left0
+    left1  <- left0
     right1 <- right0
     case (left1, right1) of
       (Left (), Left ()) ->
@@ -151,9 +154,8 @@ mergeStreams leftStream rightStream = Effect . newEitherT $ do
 
 -- merge streams in a binary tree fashion
 mergeStreamsBinary ::
-     Monad m
-  => Cons Boxed.Vector (Stream (Of Row) (EitherT UnionTableError m) ())
-  -> Stream (Of Row) (EitherT UnionTableError m) ()
+     Cons Boxed.Vector (Stream (Of Row) (EitherT UnionTableError IO) ())
+  -> Stream (Of Row) (EitherT UnionTableError IO) ()
 mergeStreamsBinary kvss =
   case Cons.length kvss of
     1 ->
@@ -175,33 +177,30 @@ mergeStreamsBinary kvss =
 
 
 unionStripedWith ::
-     Monad m
-  => Schema.Table
+     Schema.Table
   -> Maybe MaximumRowSize
   -> MergeRowsPerBlock
-  -> Cons Boxed.Vector (Stream (Of Striped.Table) m ())
-  -> Stream (Of Striped.Table) (EitherT UnionTableError m) ()
+  -> Cons Boxed.Vector (Stream (Of Striped.Table) IO ())
+  -> Stream (Of Striped.Table) (EitherT UnionTableError IO) ()
 unionStripedWith schema _msize blockRows inputs0 = do
   let
     fromStriped =
       Stream.mapM (hoistEither . first UnionStripedError . Striped.transmute schema) .
       hoist lift
 
-  hoist squash $
-    Stream.mapM (hoistEither . first UnionStripedError . Striped.fromLogical schema) $
+  Stream.mapM (hoistEither . first UnionStripedError . Striped.fromLogical schema) $
     Stream.whenEmpty (Logical.empty schema) $
     chunkRows blockRows $
     mergeStreamsBinary $
-    Cons.imap streamStripedAsRows $
-      (fmap fromStriped inputs0)
+      Cons.imap streamStripedAsRows $
+        fmap fromStriped inputs0
 {-# INLINABLE unionStripedWith #-}
 
 unionStriped ::
-     Monad m
-  => Maybe MaximumRowSize
+     Maybe MaximumRowSize
   -> MergeRowsPerBlock
-  -> Cons Boxed.Vector (Stream (Of Striped.Table) m ())
-  -> Stream (Of Striped.Table) (EitherT UnionTableError m) ()
+  -> Cons Boxed.Vector (Stream (Of Striped.Table) IO ())
+  -> Stream (Of Striped.Table) (EitherT UnionTableError IO) ()
 unionStriped msize blockRows inputs0 = do
   (heads, inputs1) <- fmap Cons.unzip . lift $ traverse peekHead inputs0
   schema           <- lift . hoistEither . unionSchemas $ fmap Striped.schema heads

@@ -30,6 +30,7 @@ library
                     , ambiata-x-vector
                     , aeson                           >= 1.0        && < 1.5
                     , aeson-pretty                    == 0.8.*
+                    , async
                     , attoparsec                      >= 0.13       && < 0.14
                     , base64-bytestring               == 1.0.*
                     , bifunctors                      >= 4.2        && < 5.6

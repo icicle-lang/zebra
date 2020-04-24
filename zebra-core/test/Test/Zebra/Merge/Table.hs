@@ -1,5 +1,6 @@
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE LambdaCase        #-}
 module Test.Zebra.Merge.Table where
 
 import           Data.Functor.Identity (runIdentity)
@@ -33,6 +34,8 @@ import qualified Zebra.Table.Schema as Schema
 import           Zebra.Table.Striped (StripedError(..))
 import qualified Zebra.Table.Striped as Striped
 import qualified Zebra.Table.Logical as Logical
+
+import           System.IO.Unsafe (unsafePerformIO)
 
 jFileTable :: Schema.Table -> Gen Striped.Table
 jFileTable schema = do
@@ -86,7 +89,7 @@ unionList ::
    -> Cons Boxed.Vector (NonEmpty Striped.Table)
    -> Either String (Maybe Striped.Table)
 unionList msize xss0 =
-  case runIdentity . runEitherT . Stream.toList . Merge.unionStriped msize (Merge.MergeRowsPerBlock 256000000) $ fmap Stream.each xss0 of
+  case unsafePerformIO . runEitherT . Stream.toList . Merge.unionStriped msize (Merge.MergeRowsPerBlock 256000000) $ fmap Stream.each xss0 of
     Left (UnionLogicalMergeError _) ->
       pure Nothing
     Left err ->
