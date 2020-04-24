@@ -91,7 +91,7 @@ bByteArray uncompressed =
 getByteArray :: Int -> Get ByteString
 getByteArray n_expected = do
   n_compressed <- Get.getWord32le
-  compressed <- Get.getByteString $ fromIntegral n_compressed
+  compressed   <- Get.getBytes $ fromIntegral n_compressed
   case Snappy.decompress compressed of
     Nothing ->
       fail $
@@ -176,8 +176,8 @@ bIntArray xs =
 getIntArray :: Int -> Get (Storable.Vector Int64)
 getIntArray elems = do
   bufsize <- fromIntegral <$> Get.getWord32le
-  offset <- fromIntegral <$> Get.getWord64le
-  bytes <- Get.getByteString bufsize
+  offset  <- fromIntegral <$> Get.getWord64le
+  bytes   <- Get.getBytes bufsize
   case Foreign.unpackArray bytes elems offset of
     Left err -> fail $ "Could not unpack 64-encoded words: " <> show err
     Right xs -> pure xs
