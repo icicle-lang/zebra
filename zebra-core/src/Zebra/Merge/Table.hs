@@ -17,10 +17,8 @@ module Zebra.Merge.Table (
 
 import           Control.Concurrent.Async
 
-import           Control.Monad.Morph (hoist, squash)
 import           Control.Monad.Trans.Class (lift)
 import           Control.Monad.Trans.Either (EitherT, newEitherT, runEitherT, hoistEither, left)
-import           Zebra.X.Either (firstJoin)
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Vector as Boxed
@@ -30,6 +28,7 @@ import           P
 import           Streaming.Internal (Stream (..))
 import           Viking (Of (..))
 import qualified Viking.Stream as Stream
+import qualified Zebra.X.Stream as Stream
 
 import           X.Data.Vector.Cons (Cons)
 import qualified X.Data.Vector.Cons as Cons
@@ -102,10 +101,9 @@ peekHead input = do
 {-# INLINABLE peekHead #-}
 
 streamStripedAsRows ::
-     Int
-  -> Stream (Of Striped.Table) (EitherT UnionTableError IO) ()
+     Stream (Of Striped.Table) (EitherT UnionTableError IO) ()
   -> Stream (Of Row) (EitherT UnionTableError IO) ()
-streamStripedAsRows _num stream =
+streamStripedAsRows stream =
   Stream.map (uncurry Row) $
     Stream.concat $
     Stream.mapM (hoistEither . logicalPairs) $
@@ -185,15 +183,14 @@ unionStripedWith ::
 unionStripedWith schema _msize blockRows inputs0 = do
   let
     fromStriped =
-      Stream.mapM (hoistEither . first UnionStripedError . Striped.transmute schema) .
-      hoist lift
+      Stream.hoistEither (first UnionStripedError . Striped.transmute schema)
 
   Stream.mapM (hoistEither . first UnionStripedError . Striped.fromLogical schema) $
     Stream.whenEmpty (Logical.empty schema) $
     chunkRows blockRows $
     mergeStreamsBinary $
-      Cons.imap streamStripedAsRows $
-        fmap fromStriped inputs0
+      fmap (streamStripedAsRows . fromStriped)
+        inputs0
 {-# INLINABLE unionStripedWith #-}
 
 unionStriped ::

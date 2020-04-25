@@ -121,6 +121,7 @@ library
                     Zebra.Time
 
                     Zebra.X.Either
+                    Zebra.X.Stream
                     Zebra.X.Vector.Generic
                     Zebra.X.Vector.Segment
                     Zebra.X.Vector.Storable
