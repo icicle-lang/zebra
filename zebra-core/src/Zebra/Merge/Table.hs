@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DoAndIfThenElse #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -15,8 +16,9 @@ module Zebra.Merge.Table (
   , unionStripedWith
   ) where
 
-import           Control.Concurrent.Async
+import           Control.Concurrent.Async.Lifted
 
+import           Control.Monad.Trans.Control (MonadBaseControl (..))
 import           Control.Monad.Trans.Class (lift)
 import           Control.Monad.Trans.Either (EitherT, newEitherT, runEitherT, hoistEither, left)
 
@@ -101,8 +103,9 @@ peekHead input = do
 {-# INLINABLE peekHead #-}
 
 streamStripedAsRows ::
-     Stream (Of Striped.Table) (EitherT UnionTableError IO) ()
-  -> Stream (Of Row) (EitherT UnionTableError IO) ()
+     MonadBaseControl IO m
+  => Stream (Of Striped.Table) (EitherT UnionTableError m) ()
+  -> Stream (Of Row) (EitherT UnionTableError m) ()
 streamStripedAsRows stream =
   Stream.map (uncurry Row) $
     Stream.concat $
@@ -111,9 +114,10 @@ streamStripedAsRows stream =
 {-# INLINABLE streamStripedAsRows #-}
 
 mergeStreams ::
-     Stream (Of Row) (EitherT UnionTableError IO) ()
-  -> Stream (Of Row) (EitherT UnionTableError IO) ()
-  -> Stream (Of Row) (EitherT UnionTableError IO) ()
+     MonadBaseControl IO m
+  => Stream (Of Row) (EitherT UnionTableError m) ()
+  -> Stream (Of Row) (EitherT UnionTableError m) ()
+  -> Stream (Of Row) (EitherT UnionTableError m) ()
 mergeStreams leftStream rightStream = Effect . newEitherT $ do
   (left0, right0) <-
     concurrently
@@ -152,8 +156,9 @@ mergeStreams leftStream rightStream = Effect . newEitherT $ do
 
 -- merge streams in a binary tree fashion
 mergeStreamsBinary ::
-     Cons Boxed.Vector (Stream (Of Row) (EitherT UnionTableError IO) ())
-  -> Stream (Of Row) (EitherT UnionTableError IO) ()
+     MonadBaseControl IO m
+  => Cons Boxed.Vector (Stream (Of Row) (EitherT UnionTableError m) ())
+  -> Stream (Of Row) (EitherT UnionTableError m) ()
 mergeStreamsBinary kvss =
   case Cons.length kvss of
     1 ->
@@ -175,11 +180,12 @@ mergeStreamsBinary kvss =
 
 
 unionStripedWith ::
-     Schema.Table
+     MonadBaseControl IO m
+  => Schema.Table
   -> Maybe MaximumRowSize
   -> MergeRowsPerBlock
-  -> Cons Boxed.Vector (Stream (Of Striped.Table) IO ())
-  -> Stream (Of Striped.Table) (EitherT UnionTableError IO) ()
+  -> Cons Boxed.Vector (Stream (Of Striped.Table) m ())
+  -> Stream (Of Striped.Table) (EitherT UnionTableError m) ()
 unionStripedWith schema _msize blockRows inputs0 = do
   let
     fromStriped =
@@ -194,10 +200,11 @@ unionStripedWith schema _msize blockRows inputs0 = do
 {-# INLINABLE unionStripedWith #-}
 
 unionStriped ::
-     Maybe MaximumRowSize
+     MonadBaseControl IO m
+  => Maybe MaximumRowSize
   -> MergeRowsPerBlock
-  -> Cons Boxed.Vector (Stream (Of Striped.Table) IO ())
-  -> Stream (Of Striped.Table) (EitherT UnionTableError IO) ()
+  -> Cons Boxed.Vector (Stream (Of Striped.Table) m ())
+  -> Stream (Of Striped.Table) (EitherT UnionTableError m) ()
 unionStriped msize blockRows inputs0 = do
   (heads, inputs1) <- fmap Cons.unzip . lift $ traverse peekHead inputs0
   schema           <- lift . hoistEither . unionSchemas $ fmap Striped.schema heads

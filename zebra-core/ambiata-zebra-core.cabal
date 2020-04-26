@@ -30,7 +30,7 @@ library
                     , ambiata-x-vector
                     , aeson                           >= 1.0        && < 1.5
                     , aeson-pretty                    == 0.8.*
-                    , async
+                    , lifted-async
                     , attoparsec                      >= 0.13       && < 0.14
                     , base64-bytestring               == 1.0.*
                     , bifunctors                      >= 4.2        && < 5.6
@@ -41,6 +41,7 @@ library
                     , exceptions                      >= 0.10       && < 0.11
                     , ghc-prim                        >= 0.4        && < 0.6
                     , lens                            >= 4.7
+                    , monad-control
                     , mmorph                          >= 1.1
                     , mtl                             >= 2.2
                     , old-locale                      == 1.0.*
@@ -54,6 +55,7 @@ library
                     , text                            == 1.2.*
                     , thyme                           == 0.3.*
                     , transformers                    == 0.5.*
+                    , transformers-base
                     , transformers-either
                     , unordered-containers            == 0.2.*
                     , vector                          >= 0.11       && < 0.13
@@ -125,6 +127,7 @@ library
                     Zebra.X.Vector.Generic
                     Zebra.X.Vector.Segment
                     Zebra.X.Vector.Storable
+                    Zebra.X.WrappedResourceT
 
   include-dirs:
                        csrc

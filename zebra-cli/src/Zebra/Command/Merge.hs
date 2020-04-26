@@ -2,6 +2,7 @@
 {-# LANGUAGE DoAndIfThenElse #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -15,6 +16,7 @@ module Zebra.Command.Merge (
   , renderMergeError
   ) where
 
+import           Control.Monad.Trans.Control (MonadBaseControl (..))
 import           Control.Monad.Catch (MonadCatch)
 import           Control.Monad.IO.Class (liftIO)
 import           Control.Monad.Morph (hoist)
@@ -104,7 +106,7 @@ readSchema = \case
     fmap Just . firstT MergeTextSchemaDecodeError . hoistEither $
       Text.decodeSchema schema
 
-zebraMerge :: (MonadResource m, MonadCatch m) => Merge -> EitherT MergeError m ()
+zebraMerge :: (MonadResource m, MonadCatch m, MonadBaseControl IO m) => Merge -> EitherT MergeError m ()
 zebraMerge x = do
   mschema <- readSchema (mergeSchema x)
 
@@ -124,4 +126,4 @@ zebraMerge x = do
       Binary.encodeStripedWith (mergeVersion x) .
     hoist (firstJoin MergeUnionTableError) $
       union msize (mergeRowsPerChunk x) inputs
-{-# SPECIALIZE zebraMerge :: Merge -> EitherT MergeError (ResourceT IO) () #-}
+
