@@ -51,7 +51,7 @@ library
                     , streaming                       >= 0.1        && < 0.3
                     , streaming-bytestring            >= 0.1        && < 0.3
                     , text                            == 1.2.*
-                    , thyme                           == 0.3.*
+                    , thyme                           >= 0.3.6      && < 0.4
                     , transformers                    == 0.5.*
                     , transformers-either
                     , unordered-containers            == 0.2.*

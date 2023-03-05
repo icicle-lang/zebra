@@ -38,9 +38,8 @@ module Zebra.Factset.Data (
 import           Anemone.Foreign.Hash (fasthash32')
 
 import           Data.ByteString (ByteString)
-import           Data.Thyme (UTCTime, Day, TimeDiff)
-import           Data.Thyme.Time.Core (addDays, diffDays, fromGregorian)
-import           Data.Thyme.Time.Core (mkUTCTime, addUTCTime, fromMicroseconds)
+import           Data.Thyme (UTCTime, pattern UTCTime, Day, TimeDiff)
+import           Data.Thyme.Time.Core (addDays, diffDays, fromGregorian, addUTCTime, fromMicroseconds)
 import qualified Data.Vector.Storable as Storable
 import           Data.Vector.Unboxed.Deriving (derivingUnbox)
 import           Data.Word (Word32, Word64)
@@ -165,7 +164,7 @@ ivoryEpochDay =
 
 ivoryEpochTime :: UTCTime
 ivoryEpochTime =
-  mkUTCTime ivoryEpochDay (fromSeconds 0)
+  UTCTime ivoryEpochDay (fromSeconds 0)
 {-# INLINE ivoryEpochTime #-}
 
 fromSeconds :: TimeDiff t => Int64 -> t

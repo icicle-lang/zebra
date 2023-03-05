@@ -18,14 +18,12 @@ module Zebra.Factset.Fact (
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as Char8
 import qualified Data.Text as Text
-import           Data.Thyme.Format (formatTime)
+import           Data.Thyme.Format (formatTime, defaultTimeLocale)
 import qualified Data.Vector as Boxed
 
 import           GHC.Generics (Generic)
 
 import           P hiding (some)
-
-import           System.Locale (defaultTimeLocale)
 
 import           Text.Printf (printf)
 import           Text.Show.Pretty (ppShow)
