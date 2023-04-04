@@ -183,7 +183,6 @@ error_t zebra_entities_of_block (
     err = zebra_neritic_clone_tables (pool, table_count, block->tables, &tables);
     if (err) return err;
 
-    int64_t block_rows_remaining = block->row_count;
     int64_t *block_times = block->times;
     int64_t *block_factset_ids = block->factset_ids;
     bool64_t *block_tombstones = block->tombstones;
@@ -222,7 +221,6 @@ error_t zebra_entities_of_block (
             block_times += attribute_row_count;
             block_factset_ids += attribute_row_count;
             block_tombstones += attribute_row_count;
-            block_rows_remaining -= attribute_row_count;
 
             zebra_table_t *table = tables + attribute_id;
 
