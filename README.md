@@ -5,7 +5,7 @@
 
 <img src="https://github.com/ambiata/zebra/raw/master/doc/zebra.jpg" width="350"/>
 
-[![Build Status](https://api.travis-ci.com/icicle-lang/zebra.svg?branch=master)](https://travis-ci.com/icicle-lang/zebra)
+[![Build Status](https://github.com/icicle-lang/zebra/actions/workflows/haskell.yml/badge.svg)](https://github.com/icicle-lang/zebra/actions/workflows/haskell.yml)
 
 </div>
 
