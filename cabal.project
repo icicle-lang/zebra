@@ -2,9 +2,11 @@ packages: zebra-cli/
           zebra-core/
           zebra-core/test/
 
+package zebra-core
+    tests: true
+
 constraints:
   cabal > 2
-
 
 source-repository-package
     type: git
