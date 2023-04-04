@@ -27,6 +27,7 @@ import           Zebra.Command.Import
 import           Zebra.Command.Merge
 import           Zebra.Command.Summary
 import           Zebra.Serial.Binary (BinaryVersion(..))
+import           Zebra.X.WrappedResourceT (usingResourceT)
 
 
 main :: IO ()
@@ -324,7 +325,7 @@ run = \case
       zebraExport export
 
   ZebraMerge merge ->
-    orDie renderMergeError . hoist runResourceT $
+    orDie renderMergeError . hoist (runResourceT . usingResourceT) $
       zebraMerge merge
 
   ZebraAdapt adapt ->

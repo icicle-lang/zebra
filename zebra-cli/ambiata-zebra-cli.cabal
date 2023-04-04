@@ -30,6 +30,7 @@ library
                     , bytestring                      >= 0.10
                     , containers                      == 0.5.*
                     , exceptions                      >= 0.10
+                    , monad-control
                     , mmorph                          >= 1.0
                     , pretty-show                     == 1.6.*
                     , resourcet                       >= 1.1
