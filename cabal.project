@@ -1,19 +1,51 @@
-packages:
-          zebra-cli/
+packages: zebra-cli/
           zebra-core/
           zebra-core/test/
-          lib/anemone/
-          lib/disorder/disorder-core
-          lib/disorder/disorder-corpus
-          lib/disorder/disorder-jack
-          lib/viking/
-          lib/snapper/
-          lib/x/x-show/
-          lib/x/x-bytestring/
-          lib/x/x-optparse/
-          lib/x/x-vector/
-          lib/p/
 
 constraints:
   cabal > 2
 
+
+source-repository-package
+    type: git
+    location: https://github.com/icicle-lang/viking.git
+    tag: 894a57086b39be059bf039418346751cd60ee1d7
+
+source-repository-package
+    type: git
+    location: https://github.com/icicle-lang/anemone.git
+    tag: 95eae0bbadfa9f3b6a4886b0b9756c675f815244
+
+source-repository-package
+    type: git
+    location: https://github.com/icicle-lang/snapper.git
+    tag: f9a3c3fcccac8d3e884991f5b122e0f368a69a8b
+
+source-repository-package
+    type: git
+    location: https://github.com/icicle-lang/p.git
+    tag: a8e1a45de1296e820cb4869e1e087ee6c8a0e7a8
+
+source-repository-package
+    type: git
+    location: https://github.com/icicle-lang/x.git
+    tag: 4b54bf1680e7683a2091fa2e9aa6153994625da7
+    subdir: x-show
+
+source-repository-package
+    type: git
+    location: https://github.com/icicle-lang/x.git
+    tag: 4b54bf1680e7683a2091fa2e9aa6153994625da7
+    subdir: x-bytestring
+
+source-repository-package
+    type: git
+    location: https://github.com/icicle-lang/x.git
+    tag: 4b54bf1680e7683a2091fa2e9aa6153994625da7
+    subdir: x-optparse
+
+source-repository-package
+    type: git
+    location: https://github.com/icicle-lang/x.git
+    tag: 4b54bf1680e7683a2091fa2e9aa6153994625da7
+    subdir: x-vector
