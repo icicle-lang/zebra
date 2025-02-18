@@ -13,7 +13,7 @@ module Zebra.X.Vector.Generic (
 
 import           X.Data.Vector.Stream (Stream(..), Step(..))
 import qualified X.Data.Vector.Stream as Stream
-import           X.Data.Vector.Generic as Generic
+import           X.Data.Vector.Generic as Generic hiding (group)
 
 import           P hiding (concatMap, length, sum)
 

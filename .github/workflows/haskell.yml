@@ -16,18 +16,24 @@ jobs:
     strategy:
       matrix:
         include:
-          - cabal: "3.2"
+          - cabal: "3.8.1"
+            ghc: "8.8.4"
+            os: ubuntu-latest
+          - cabal: "3.8.1"
             ghc: "8.10.7"
             os: ubuntu-latest
-          - cabal: "3.2"
-            ghc: "8.8.4"
+          - cabal: "3.12"
+            ghc: "9.10.1"
+            os: ubuntu-latest
+          - cabal: "3.12"
+            ghc: "9.12.1"
             os: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v3
       with:
         submodules: recursive
-    - uses: haskell/actions/setup@v2
+    - uses: haskell-actions/setup@v2
       id: setup-haskell-cabal
       name: Setup Haskell
       with:
@@ -49,4 +55,4 @@ jobs:
         cabal build all
     - name: Test
       run: |
-        cabal test zebra-core
+        cabal test all
