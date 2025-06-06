@@ -16,7 +16,7 @@ source-repository-package
 source-repository-package
     type: git
     location: https://github.com/icicle-lang/anemone.git
-    tag: 2123aeb42d5b87b4a283354782a34328a2ef44a2
+    tag: 59fa938366193f672a1b02159eef94c06c7bb748
 
 source-repository-package
     type: git
@@ -26,28 +26,28 @@ source-repository-package
 source-repository-package
     type: git
     location: https://github.com/icicle-lang/p.git
-    tag: 7482cc51b2e603ec48a8fa0ba43d3d820500ecbb
+    tag: 617e5dc2887f3e99d67b29c799fa406f106fdbc6
 
 source-repository-package
     type: git
-    location: https://github.com/tmcgilchrist/x.git
-    tag: ce516dc273a8ab44c8dea0ab0d1de835276b07e0
+    location: https://github.com/icicle-lang/x.git
+    tag: 7c9dc0ac182c84980d73345fc65ca5282090b720
     subdir: x-show
 
 source-repository-package
     type: git
-    location: https://github.com/tmcgilchrist/x.git
-    tag: ce516dc273a8ab44c8dea0ab0d1de835276b07e0
+    location: https://github.com/icicle-lang/x.git
+    tag: 7c9dc0ac182c84980d73345fc65ca5282090b720
     subdir: x-bytestring
 
 source-repository-package
     type: git
-    location: https://github.com/tmcgilchrist/x.git
-    tag: ce516dc273a8ab44c8dea0ab0d1de835276b07e0
+    location: https://github.com/icicle-lang/x.git
+    tag: 7c9dc0ac182c84980d73345fc65ca5282090b720
     subdir: x-optparse
 
 source-repository-package
     type: git
-    location: https://github.com/tmcgilchrist/x.git
-    tag: ce516dc273a8ab44c8dea0ab0d1de835276b07e0
+    location: https://github.com/icicle-lang/x.git
+    tag: 7c9dc0ac182c84980d73345fc65ca5282090b720
     subdir: x-vector

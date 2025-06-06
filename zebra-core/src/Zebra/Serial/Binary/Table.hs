@@ -150,20 +150,20 @@ getColumn version n = \case
 
 bTagArray :: Storable.Vector Tag -> Builder
 bTagArray vt =
-  bIntArray . unsafeCoerce $ vt
+  bIntArray . Storable.unsafeCoerceVector $ vt
 {-# INLINABLE bTagArray #-}
 
 getTagArray :: Int -> Get (Storable.Vector Tag)
 getTagArray n =
-  unsafeCoerce <$> getIntArray n
+  Storable.unsafeCoerceVector <$> getIntArray n
 {-# INLINABLE getTagArray #-}
 
 bDoubleArray :: Storable.Vector Double -> Builder
 bDoubleArray =
-  bIntArray . unsafeCoerce
+  bIntArray . Storable.unsafeCast
 {-# INLINABLE bDoubleArray #-}
 
 getDoubleArray :: Int -> Get (Storable.Vector Double)
 getDoubleArray n =
-  unsafeCoerce <$> getIntArray n
+  Storable.unsafeCast <$> getIntArray n
 {-# INLINABLE getDoubleArray #-}

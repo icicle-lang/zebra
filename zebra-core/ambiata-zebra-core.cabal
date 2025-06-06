@@ -161,7 +161,7 @@ library
                        csrc/zebra_unpack.c
 
   cc-options:
-                       -std=c99 -ggdb -msse4.2 -Wall -Werror -Wuninitialized -Wno-unused-command-line-argument -DCABAL=1
+                       -std=c99 -Wall -Werror -Wuninitialized -Wno-unused-command-line-argument -DCABAL=1
 
 test-suite test
   type:
