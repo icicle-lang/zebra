@@ -4,6 +4,8 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 module Zebra.Factset.Block.Index (
     BlockIndex(..)
@@ -14,7 +16,6 @@ module Zebra.Factset.Block.Index (
 import           Data.Vector.Unboxed.Deriving (derivingUnbox)
 
 import           GHC.Generics (Generic)
-
 import           P
 
 import qualified X.Data.Vector as Boxed
@@ -33,9 +34,15 @@ data BlockIndex =
     , indexTombstone :: !Tombstone
     } deriving (Eq, Ord, Show, Generic)
 
+derivingUnbox "BlockIndex"
+  [t| BlockIndex -> (Time, FactsetId, Tombstone) |]
+  [| \(BlockIndex x y z) -> (x, y, z) |]
+  [| \(x, y, z) -> BlockIndex x y z |]
+
 indicesOfFacts :: Boxed.Vector Fact -> Unboxed.Vector BlockIndex
 indicesOfFacts =
   let
+    fromFact :: Fact -> BlockIndex
     fromFact fact =
       BlockIndex
         (factTime fact)
@@ -43,8 +50,3 @@ indicesOfFacts =
         (maybe' Tombstone (const NotTombstone) $ factValue fact)
   in
     Unboxed.convert . fmap fromFact
-
-derivingUnbox "BlockIndex"
-  [t| BlockIndex -> (Time, FactsetId, Tombstone) |]
-  [| \(BlockIndex x y z) -> (x, y, z) |]
-  [| \(x, y, z) -> BlockIndex x y z |]

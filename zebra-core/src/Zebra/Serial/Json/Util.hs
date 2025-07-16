@@ -40,14 +40,13 @@ module Zebra.Serial.Json.Util (
 import           Data.Aeson ((.=), (.:), (.:?))
 import qualified Data.Aeson as Aeson
 import qualified Data.Aeson.Encode.Pretty as Aeson
-import           Data.Aeson.Internal ((<?>))
-import qualified Data.Aeson.Internal as Aeson
+import           Data.Aeson ((<?>))
+-- import qualified Data.Aeson.Internal as Aeson
 import qualified Data.Aeson.Parser as Aeson
 import qualified Data.Aeson.Types as Aeson
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString.Base64 as Base64
 import qualified Data.ByteString.Lazy as Lazy
-import qualified Data.HashMap.Strict as HashMap
 import qualified Data.List as List
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text
@@ -57,6 +56,8 @@ import           P
 
 import           Zebra.Table.Data
 import           Zebra.Time
+import qualified Data.Aeson.KeyMap as KeyMap
+import           Data.Aeson.Key (toText, toString, fromText)
 
 
 data JsonDecodeError =
@@ -136,7 +137,7 @@ ppBinary =
 pUnit :: Aeson.Value -> Aeson.Parser ()
 pUnit =
   Aeson.withObject "object containing unit (i.e. {})" $ \o ->
-    if HashMap.null o then
+    if KeyMap.null o then
       pure ()
     else
       fail $
@@ -146,7 +147,7 @@ pUnit =
 
 ppUnit :: Aeson.Value
 ppUnit =
-  Aeson.Object HashMap.empty
+  Aeson.Object KeyMap.empty
 {-# INLINABLE ppUnit #-}
 
 pInt :: Aeson.Value -> Aeson.Parser Int64
@@ -180,11 +181,11 @@ ppDouble =
 pEnum :: (VariantName -> Maybe (Aeson.Value -> Aeson.Parser a)) -> Aeson.Value -> Aeson.Parser a
 pEnum mkParser =
   Aeson.withObject "object containing an enum (i.e. a single member)" $ \o ->
-    case HashMap.toList o of
+    case KeyMap.toList o of
       [(name, value)] -> do
-        case mkParser (VariantName name) of
+        case mkParser (VariantName $ toText name) of
           Nothing ->
-            fail ("unknown enum variant: " <> Text.unpack name) <?> Aeson.Key name
+            fail ("unknown enum variant: " <> toString name) <?> Aeson.Key name
           Just parser ->
             parser value <?> Aeson.Key name
       [] ->
@@ -195,30 +196,30 @@ pEnum mkParser =
         fail $
           "expected an object containing an enum (i.e. a single member)," <>
           "\nbut found an object with more than one member:" <>
-          "\n  " <> List.intercalate ", " (fmap (Text.unpack . fst) kvs)
+          "\n  " <> List.intercalate ", " (fmap (toString . fst) kvs)
 {-# INLINABLE pEnum #-}
 
 ppEnum :: Variant Aeson.Value -> Aeson.Value
 ppEnum (Variant (VariantName name) value) =
   Aeson.object [
-      name .= value
+      (fromText name) .= value
     ]
 {-# INLINABLE ppEnum #-}
 
 withStructField :: FieldName -> Aeson.Object -> (Aeson.Value -> Aeson.Parser a) -> Aeson.Parser a
 withStructField name o p = do
-  x <- o .: unFieldName name
-  p x <?> Aeson.Key (unFieldName name)
+  x <- o .: (fromText . unFieldName $ name)
+  p x <?> Aeson.Key (fromText . unFieldName $ name)
 {-# INLINABLE withStructField #-}
 
 withOptionalField :: FieldName -> Aeson.Object -> (Aeson.Value -> Aeson.Parser a) -> Aeson.Parser (Maybe a)
 withOptionalField name o p = do
-  mx <- o .:? unFieldName name
+  mx <- o .:? (fromText . unFieldName $ name)
   case mx of
     Nothing ->
       pure Nothing
     Just x ->
-      Just <$> (p x <?> Aeson.Key (unFieldName name))
+      Just <$> (p x <?> Aeson.Key (fromText . unFieldName $ name))
 {-# INLINABLE withOptionalField #-}
 
 ppStruct :: [Field Aeson.Value] -> Aeson.Value
@@ -228,7 +229,7 @@ ppStruct =
 
 ppStructField :: Field Aeson.Value -> Aeson.Pair
 ppStructField (Field (FieldName name) value) =
-  name .= value
+  (fromText name) .= value
 {-# INLINABLE ppStructField #-}
 
 kmapM :: (Aeson.Value -> Aeson.Parser a) -> Boxed.Vector Aeson.Value -> Aeson.Parser (Boxed.Vector a)

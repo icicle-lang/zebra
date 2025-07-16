@@ -91,7 +91,7 @@ bByteArray uncompressed =
 getByteArray :: Int -> Get ByteString
 getByteArray n_expected = do
   n_compressed <- Get.getWord32le
-  compressed   <- Get.getBytes $ fromIntegral n_compressed
+  compressed   <- Get.getByteString $ fromIntegral n_compressed
   case Snappy.decompress compressed of
     Nothing ->
       fail $
@@ -169,7 +169,7 @@ bIntArray xs =
       -- num-bits (len * 1 byte)
       -- packs worst case (len * 8 byte)
       ensure = 4 + 8 + len + len * 8
-      prim = Prim.boudedPrim ensure Foreign.packArray
+      prim = Prim.boundedPrim ensure Foreign.packArray
   in Prim.primBounded prim xs
 {-# INLINABLE bIntArray #-}
 
@@ -177,7 +177,7 @@ getIntArray :: Int -> Get (Storable.Vector Int64)
 getIntArray elems = do
   bufsize <- fromIntegral <$> Get.getWord32le
   offset  <- fromIntegral <$> Get.getWord64le
-  bytes   <- Get.getBytes bufsize
+  bytes   <- Get.getByteString bufsize
   case Foreign.unpackArray bytes elems offset of
     Left err -> fail $ "Could not unpack 64-encoded words: " <> show err
     Right xs -> pure xs

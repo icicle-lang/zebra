@@ -157,7 +157,7 @@ bVersion = \case
 
 getVersion :: Get BinaryVersion
 getVersion = do
-  bs <- Get.getBytes $ ByteString.length MagicV2
+  bs <- Get.getByteString $ ByteString.length MagicV2
   case bs of
     MagicV0 ->
       fail "This version of zebra cannot read v0 zebra files."

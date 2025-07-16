@@ -12,7 +12,6 @@ import qualified Data.Binary.Get as Get
 import           Data.ByteString (ByteString)
 import           Data.ByteString.Builder (Builder)
 import qualified Data.ByteString.Builder as Build
-import           Data.Coerce (coerce)
 import qualified Data.Text as Text
 
 import           P
@@ -150,21 +149,21 @@ getColumn version n = \case
 {-# INLINABLE getColumn #-}
 
 bTagArray :: Storable.Vector Tag -> Builder
-bTagArray =
-  bIntArray . coerce
+bTagArray vt =
+  bIntArray . Storable.unsafeCoerceVector $ vt
 {-# INLINABLE bTagArray #-}
 
 getTagArray :: Int -> Get (Storable.Vector Tag)
 getTagArray n =
-  coerce <$> getIntArray n
+  Storable.unsafeCoerceVector <$> getIntArray n
 {-# INLINABLE getTagArray #-}
 
 bDoubleArray :: Storable.Vector Double -> Builder
 bDoubleArray =
-  bIntArray . coerce
+  bIntArray . Storable.unsafeCast
 {-# INLINABLE bDoubleArray #-}
 
 getDoubleArray :: Int -> Get (Storable.Vector Double)
 getDoubleArray n =
-  coerce <$> getIntArray n
+  Storable.unsafeCast <$> getIntArray n
 {-# INLINABLE getDoubleArray #-}
