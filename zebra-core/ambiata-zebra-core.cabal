@@ -130,6 +130,7 @@ library
 
   install-includes:
                        zebra_append.h
+                       zebra_bindings.h
                        zebra_block_split.h
                        zebra_clone.h
                        zebra_data.h
@@ -141,6 +142,7 @@ library
 
   includes:
                        zebra_append.h
+                       zebra_bindings.h
                        zebra_block_split.h
                        zebra_clone.h
                        zebra_data.h
